@@ -49,10 +49,33 @@ def half_width(h):
     return max(0.0, (HEIGHT - h) / TAN)
 
 
+# Round G: two more bands of the one epithet "Thoth, lord of divine words" (ḏḥwtj nb mdw-nṯr), eight
+# signs in a row repeated across the face: THOTH_SIGNS is the single source of the sequence, drawn by
+# render-hieroglyphs.mjs from the vendored Noto font. A coarser band at 34% of the height, a finer
+# one at 52%. rows: the band texture's height in texels (same px/m as the frieze); sign_h and rule are
+# metres up the face; gap the space between repeats; sink the carving's depth.
+THOTH_SIGNS = (0x1315D, 0x133CF, 0x133ED, 0x1305F, 0x1339F, 0x132B9, 0x13303, 0x133EA)
+THOTH_LOW = dict(mat='thoth', centre=0.34 * HEIGHT, rows=344, sign_h=0.18, rule=0.15, gap=0.30,
+                 sink=0.003)
+THOTH_HIGH = dict(mat='thoth_fine', centre=0.52 * HEIGHT, rows=176, sign_h=0.11, rule=0.09, gap=0.20,
+                  sink=0.0025)
+
+
+def band_slant(rows):
+    """A band texture's extent measured up the face (m)."""
+    return rows / FRIEZE_PXM
+
+
+def band_extent(centre, rows):
+    """(h0, h1): the heights (m) where a band's strip of casing starts and ends."""
+    d = centre / SIN_SLOPE
+    sl = band_slant(rows)
+    return ((d - sl / 2) * SIN_SLOPE, (d + sl / 2) * SIN_SLOPE)
+
+
 def frieze_band():
     """(h0, h1): the heights (m) where the frieze's strip of casing starts and ends."""
-    d = FRIEZE_CENTRE / SIN_SLOPE
-    return ((d - FRIEZE_SLANT / 2) * SIN_SLOPE, (d + FRIEZE_SLANT / 2) * SIN_SLOPE)
+    return band_extent(FRIEZE_CENTRE, FRIEZE_ROWS)
 
 
 def real(s, h):

@@ -308,32 +308,44 @@ def build_pyramid(cx, cz, y0, stats):
 
     bm = bmesh.new()
     wt = S.half_width(S.CASING_TOP)
-    f0, f1 = S.frieze_band()
     layer = uv_layer(bm)
     corners = ((-1, -1), (1, -1), (1, 1), (-1, 1))
-    rings = (('b', S.HALF, 0.0), ('a', S.half_width(f0), f0), ('c', S.half_width(f1), f1),
-             ('t', wt, S.CASING_TOP))
+    # courses up the face: plain casing, then three carved bands (the frieze, the Thoth bands), each
+    # its own material, with plain casing between them and above
+    bands = [('frieze', S.FRIEZE_CENTRE, S.FRIEZE_ROWS), (S.THOTH_LOW['mat'], S.THOTH_LOW['centre'],
+             S.THOTH_LOW['rows']), (S.THOTH_HIGH['mat'], S.THOTH_HIGH['centre'], S.THOTH_HIGH['rows'])]
+    rings = [('b', S.HALF, 0.0)]
+    courses = []
+    prev = 'b'
+    for mat, centre, rows in bands:
+        h0, h1 = S.band_extent(centre, rows)
+        rings += [(mat + '0', S.half_width(h0), h0), (mat + '1', S.half_width(h1), h1)]
+        courses += [(prev, mat + '0', 'limestone', None), (mat + '0', mat + '1', mat, rows)]
+        prev = mat + '1'
+    rings.append(('t', wt, S.CASING_TOP))
+    courses.append((prev, 't', 'limestone', None))
     ring = {(key, i): bm.verts.new(B(*p(s_ * r, h, e_ * r)))
             for key, r, h in rings for i, (s_, e_) in enumerate(corners)}
     pos = {key: (r, h) for key, r, h in rings}
-    for lo, hi, mat in (('b', 'a', 'limestone'), ('a', 'c', 'frieze'), ('c', 't', 'limestone')):
+    for lo, hi, mat, rows in courses:
         for i in range(4):
             j = (i + 1) % 4
             keys = [(lo, i), (lo, j), (hi, j), (hi, i)]
             f = bm.faces.new([ring[k] for k in keys])
             f.material_index = MI[mat]
             f.smooth = False
-            if mat != 'frieze':
+            if rows is None:
                 continue
             # the band texture spans the base's width across and the band's own extent up the slope,
             # u along the face as the viewer outside reads it (right = (nz, 0, -nx)), v up the slope
+            h_lo = pos[lo][1]
             (s0, e0), (s1, e1) = corners[i], corners[j]
             nx, nz = (s0 + s1) / 2, (e0 + e1) / 2             # the face's outward normal in plan
             for loop, (key, ci) in zip(f.loops, keys):
                 r, h = pos[key]
                 cs, ce = corners[ci]
                 u = 0.5 + (cs * r * nz - ce * r * nx) / S.BASE
-                loop[layer].uv = (u, (h - f0) / S.SIN_SLOPE / S.FRIEZE_SLANT)
+                loop[layer].uv = (u, (h - h_lo) / S.SIN_SLOPE / S.band_slant(rows))
     faces = list(bm.faces)
     bmesh.ops.recalc_face_normals(bm, faces=faces)
     casing = G.new_object('pyramid_casing', bm)

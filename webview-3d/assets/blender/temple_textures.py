@@ -12,6 +12,7 @@
 #   column      the Hathor column atlas after Pl. 12: shaft bands, the Hathor face, the naos block
 #   title       the door lintel: the font-rendered title as sunk relief with a blue fill
 #   frieze      the pyramid casing's band of sacred signs (ankh djed was), sunk in the limestone
+#   thoth, thoth_fine   two bands of "Thoth, lord of divine words" (eight signs repeated) above it
 #   granite     Aswan rose granite (pink ground, grey and black mineral speckle); the obelisks'
 #               atlas: the same granite with the central inscription column of six faces traced
 #               from the Luxor obelisk plates (Description de l'Egypte, A. vol. III pl. 11, 12)
@@ -926,39 +927,27 @@ def frieze_signs(glyph_alpha):
     return [glyph_alpha[rows.min():rows.max() + 1, a:b] for a, b in zip(starts, ends)]
 
 
-def frieze(glyph_alpha, stats):
-    """One face's frieze band (pyramid_spec.frieze_band): plain Tura limestone with two fine incised
-    rules and, between them, 21 signs, ankh djed was repeating (a djed at the middle), each sunk a few
-    millimetres and washed pale gold. u spans the base's width, v the band up the slope. Returns the
-    colour map, the normal map and the fraction of the band that is carved."""
-    H, W = S.FRIEZE_ROWS, S.FRIEZE_PX
-    U, V = _grid(W, H, S.BASE, S.FRIEZE_SLANT)
-    n1 = P.wave_noise(U, V, 61, n=40, fmin=3, fmax=40, period_u=S.BASE, period_v=S.FRIEZE_SLANT)
-    n2 = P.wave_noise(U, V, 62, n=30, fmin=60, fmax=220, period_u=S.BASE, period_v=S.FRIEZE_SLANT)
+def _carved_band(rows, centre, rule, sink, seeds, make_mask, stats, key):
+    """A band of carved signs on plain Tura limestone, shared by the frieze and the Thoth bands: two
+    fine incised rules (`rule` m up the face either side of the centre line, `centre` m high) and the
+    signs make_mask(H, W, pxm) draws between them, each sunk `sink` m and washed pale gold. u spans the
+    base's width, v the band up the slope. Returns the colour map and the normal map."""
+    H, W = rows, S.FRIEZE_PX
+    slant = S.band_slant(rows)
+    U, V = _grid(W, H, S.BASE, slant)
+    n1 = P.wave_noise(U, V, seeds[0], n=40, fmin=3, fmax=40, period_u=S.BASE, period_v=slant)
+    n2 = P.wave_noise(U, V, seeds[1], n=30, fmin=60, fmax=220, period_u=S.BASE, period_v=slant)
     img = c3((214, 208, 192)) * (0.985 + 0.014 * n1 + 0.006 * n2)[..., None]
     pxm = S.FRIEZE_PXM
-    mask = np.zeros((H, W))
-    sh = int(round(S.FRIEZE_SIGN_H * pxm))
-    signs = frieze_signs(glyph_alpha)
-    pasted = 0
-    for i in range(S.FRIEZE_CELLS):
-        g = blur(signs[i % 3], 3)
-        gw = max(2, int(round(g.shape[1] * sh / g.shape[0])))
-        g = resample(g, sh, gw)
-        cx = int(round(W / 2 + (i - S.FRIEZE_CELLS // 2) * S.FRIEZE_CELL * pxm))
-        y0, x0 = (H - sh) // 2, cx - gw // 2
-        mask[y0:y0 + sh, x0:x0 + gw] = np.maximum(mask[y0:y0 + sh, x0:x0 + gw], g)
-        pasted += 1
-    assert pasted == S.FRIEZE_CELLS
-    signs_m = smooth(0.3, 0.7, mask)
+    signs_m = smooth(0.3, 0.7, make_mask(H, W, pxm))
     # the two rules: one fine incised line each, stopping where the face does
     rule_w = 2.5
     yy = np.arange(H)[:, None] + 0.5
-    h = (H - yy) / pxm - S.FRIEZE_SLANT / 2                     # slant offset from the centre line, m
+    h = (H - yy) / pxm - slant / 2                              # slant offset from the centre line, m
     rules = np.zeros((H, W))
     for sgn in (-1, 1):
-        rules = np.maximum(rules, smooth(rule_w, rule_w - 1.5, np.abs(h * pxm - sgn * S.FRIEZE_RULE * pxm)))
-    hh = S.FRIEZE_CENTRE + h * S.SIN_SLOPE                       # height of each row
+        rules = np.maximum(rules, smooth(rule_w, rule_w - 1.5, np.abs(h * pxm - sgn * rule * pxm)))
+    hh = centre + h * S.SIN_SLOPE                               # height of each row
     half = np.maximum(0.0, (S.HEIGHT - hh) / S.TAN)
     s_m = (np.arange(W)[None, :] + 0.5) / pxm - S.HALF
     rules = rules * (np.abs(s_m) < half - 0.006)
@@ -966,17 +955,67 @@ def frieze(glyph_alpha, stats):
     sh_px = 2
     up_left = np.zeros_like(m)
     up_left[sh_px:, sh_px:] = m[:-sh_px, :-sh_px]
-    floor = m * up_left
     wall = m * (1 - up_left)
     wash = c3(FRIEZE_WASH) * (0.96 + 0.06 * n1)[..., None]
     img = img * (1 - 0.62 * signs_m[..., None]) + wash * 0.62 * signs_m[..., None]
     fill(img, rules * 0.42, (176, 160, 132))
     fill(img, wall * 0.40, FRIEZE_SHADE)
-    col = finish(img, 'casing frieze')
-    hgt = -0.003 * blur(m, 1.2)                                  # sunk 3 mm
+    col = finish(img, f'casing {key}')
+    hgt = -sink * blur(m, 1.2)
     nrm = normal_from(hgt, 1.0 / pxm, 1.0 / pxm, wrap_u=False)
-    stats['frieze_carved_fraction'] = round(float(m.mean()), 4)
+    stats[f'{key}_carved_fraction'] = round(float(m.mean()), 4)
     return col, nrm
+
+
+def frieze(glyph_alpha, stats):
+    """The frieze band (pyramid_spec.frieze_band): 21 signs, ankh djed was repeating (a djed at the
+    middle), each sunk 3 mm and washed pale gold."""
+    signs = frieze_signs(glyph_alpha)
+
+    def mask(H, W, pxm):
+        out = np.zeros((H, W))
+        sh = int(round(S.FRIEZE_SIGN_H * pxm))
+        pasted = 0
+        for i in range(S.FRIEZE_CELLS):
+            g = blur(signs[i % 3], 3)
+            gw = max(2, int(round(g.shape[1] * sh / g.shape[0])))
+            g = resample(g, sh, gw)
+            cx = int(round(W / 2 + (i - S.FRIEZE_CELLS // 2) * S.FRIEZE_CELL * pxm))
+            y0, x0 = (H - sh) // 2, cx - gw // 2
+            out[y0:y0 + sh, x0:x0 + gw] = np.maximum(out[y0:y0 + sh, x0:x0 + gw], g)
+            pasted += 1
+        assert pasted == S.FRIEZE_CELLS
+        return out
+    return _carved_band(S.FRIEZE_ROWS, S.FRIEZE_CENTRE, S.FRIEZE_RULE, 0.003, (61, 62), mask, stats,
+                        'frieze')
+
+
+def thoth_band(glyph_alpha, band, seeds, stats, key):
+    """A band of "Thoth, lord of divine words": the rendered eight-sign row (render-hieroglyphs.mjs)
+    scaled as one piece, so every sign keeps the font's own size and baseline, and repeated across
+    the face, as many whole repeats as fit the face's width at the band, centred, `gap` apart."""
+    ink = glyph_alpha > 0.5
+    rows, cols = np.where(ink.any(1))[0], np.where(ink.any(0))[0]
+    phrase = glyph_alpha[rows.min():rows.max() + 1, cols.min():cols.max() + 1]
+
+    def mask(H, W, pxm):
+        sh = int(round(band['sign_h'] * pxm))
+        g = blur(phrase, max(1.0, phrase.shape[0] / sh / 1.5))
+        gw = int(round(g.shape[1] * sh / g.shape[0]))
+        g = resample(g, sh, gw)
+        pw, pitch = gw / pxm, gw / pxm + band['gap']
+        top = band['centre'] + band['sign_h'] / 2 * S.SIN_SLOPE
+        room = 2 * (S.half_width(top) - 0.06)
+        n = max(1, int((room + band['gap']) // pitch))
+        stats[f'{key}_repeats'] = n
+        out = np.zeros((H, W))
+        y0 = (H - sh) // 2
+        for k in range(n):
+            x0 = int(round(W / 2 + ((k - (n - 1) / 2) * pitch - pw / 2) * pxm))
+            out[y0:y0 + sh, x0:x0 + gw] = g
+        return out
+    return _carved_band(band['rows'], band['centre'], band['rule'], band['sink'], seeds, mask, stats,
+                        key)
 
 
 # ---------------------------------------------------------------- the obelisks (Luxor plates)
@@ -1184,7 +1223,7 @@ def palette_uv():
 
 # ---------------------------------------------------------------- write everything
 def write_all(tex_dir, plate, glyph_alpha, stats, obelisk_plates, head_rgba, head_depth,
-              scene_crops, frieze_alpha):
+              scene_crops, frieze_alpha, thoth_alpha):
     """plate: Pl. 13 as grey 0..1 (H x W); glyph_alpha: the rendered title's alpha 0..1."""
     os.makedirs(tex_dir, exist_ok=True)
 
@@ -1233,6 +1272,12 @@ def write_all(tex_dir, plate, glyph_alpha, stats, obelisk_plates, head_rgba, hea
     col, nrm = frieze(frieze_alpha, stats)
     png('tl_frieze_basecolor.png', col)
     png('tl_frieze_normal.png', nrm)
+    col, nrm = thoth_band(thoth_alpha, S.THOTH_LOW, (63, 64), stats, 'thoth')
+    png('tl_thoth_basecolor.png', col)
+    png('tl_thoth_normal.png', nrm)
+    col, nrm = thoth_band(thoth_alpha, S.THOTH_HIGH, (65, 66), stats, 'thoth_fine')
+    png('tl_thoth_fine_basecolor.png', col)
+    png('tl_thoth_fine_normal.png', nrm)
     png('tl_lime_warm_basecolor.png', lime_warm())
     col, nrm = poolstone()
     png('tl_poolstone_basecolor.png', col)

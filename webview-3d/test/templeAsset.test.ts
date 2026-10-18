@@ -199,9 +199,9 @@ describe('House of Life temple asset', () => {
     expect(max[2] - min[2]).toBeCloseTo(5.5, 1);
     expect((min[2] + max[2]) / 2).toBeCloseTo(12, 2); // rows 5-10: a lane all round (round F)
     expect((min[0] + max[0]) / 2).toBeCloseTo(15, 2);
-    // four sloping faces only: no cut, no chamber. Each face is three courses (plain, the frieze's
-    // band, plain), two triangles apiece (round E)
-    expect(casing.tris.length).toBe(24);
+    // four sloping faces only: no cut, no chamber. Each face is seven courses (plain, the frieze's
+    // band, plain, the two Thoth bands with plain casing between and above), two triangles apiece
+    expect(casing.tris.length).toBe(56);
     expect(cap.tris.length).toBe(4);
     // the casing ends under the gold; the pyramidion carries the point (3.5 m = 146.6 m at 1:42)
     const apex = cap.box.max[1] - min[1];
@@ -399,6 +399,173 @@ describe('House of Life temple asset', () => {
         return out;
       });
       return [Math.min(...all)];
+    }
+  });
+
+  test('round G: two bands of "Thoth, lord of divine words" (eight signs from the font), repeated across each face', async () => {
+    // the phrase is stated once in pyramid_spec.py and once in the renderer: exactly eight code points
+    const script = readFileSync(join(WORLD, '..', '..', 'render-hieroglyphs.mjs'), 'utf8');
+    const spec = readFileSync(join(WORLD, '..', '..', 'blender', 'pyramid_spec.py'), 'utf8');
+    const phrase = /const THOTH = \{\s*text: '([^']+)'/.exec(script)![1];
+    expect(phrase.replace(/\\u\{[0-9A-Fa-f]+\}/g, '')).toBe(''); // no other character
+    const points = [...phrase.matchAll(/\\u\{([0-9A-Fa-f]+)\}/g)].map((m) => m[1].toUpperCase());
+    const want = ['1315D', '133CF', '133ED', '1305F', '1339F', '132B9', '13303', '133EA'];
+    expect(points).toEqual(want);
+    const sp = /THOTH_SIGNS = \(([^)]+)\)/
+      .exec(spec)![1]
+      .split(',')
+      .map((x) => x.trim().slice(2).toUpperCase());
+    expect(sp).toEqual(want);
+
+    // the rendered row: solid signs, left to right, one row (eight signs: some are several strokes)
+    const png = PNG.sync.read(readFileSync(join(WORLD, 'src', 'thoth_signs.png')));
+    expect(png.width / png.height).toBeGreaterThan(3.5);
+    const ink = (x: number, y: number) => png.data[(y * png.width + x) * 4 + 3] > 128;
+    const rows: number[] = [];
+    for (let y = 0; y < png.height; y++)
+      for (let x = 0; x < png.width; x++)
+        if (ink(x, y)) {
+          rows.push(y);
+          break;
+        }
+    const top = Math.min(...rows);
+    const bot = Math.max(...rows);
+    const pw0 = (() => {
+      let a = png.width;
+      let b = 0;
+      for (let x = 0; x < png.width; x++)
+        for (let y = top; y <= bot; y++)
+          if (ink(x, y)) {
+            a = Math.min(a, x);
+            b = Math.max(b, x);
+            break;
+          }
+      return [a, b];
+    })();
+    const tpl = (sh: number) => {
+      // the phrase scaled so its ink rows are sh high: [alpha 0/1 per texel] as a sampler
+      const sc = (bot - top + 1) / sh;
+      const wpx = Math.round((pw0[1] - pw0[0] + 1) / sc);
+      return {
+        wpx,
+        at: (x: number, y: number) =>
+          ink(
+            Math.min(png.width - 1, pw0[0] + Math.floor((x + 0.5) * sc)),
+            Math.min(png.height - 1, top + Math.floor((y + 0.5) * sc)),
+          )
+            ? 1
+            : 0,
+      };
+    };
+
+    const node = pyramid
+      .getRoot()
+      .listNodes()
+      .find((n) => n.getName() === 'pyramid_casing')!;
+    const m = node.getWorldMatrix();
+    const prims = node.getMesh()!.listPrimitives();
+    const all: number[] = [];
+    const e = [0, 0, 0];
+    for (const p of prims) {
+      const a = p.getAttribute('POSITION')!;
+      for (let i = 0; i < a.getCount(); i++) {
+        a.getElement(i, e);
+        all.push(m[1] * e[0] + m[5] * e[1] + m[9] * e[2] + m[13]);
+      }
+    }
+    const base = Math.min(...all);
+    const decode = await basisTranscoder();
+    for (const [name, centre, signH, signRows] of [
+      ['thoth', 0.34, 0.18, 344],
+      ['thoth_fine', 0.52, 0.11, 176],
+    ] as const) {
+      const band = prims.filter((p) => p.getMaterial()!.getName() === name);
+      expect(band.length, name).toBe(1);
+      expect(band[0].getIndices()!.getCount() / 3, name).toBe(8); // four faces, one quad each
+      const pos = band[0].getAttribute('POSITION')!;
+      const ys: number[] = [];
+      for (let i = 0; i < pos.getCount(); i++) {
+        pos.getElement(i, e);
+        ys.push(m[1] * e[0] + m[5] * e[1] + m[9] * e[2] + m[13]);
+      }
+      const rel = (y: number) => (y - base) / 3.5;
+      expect((rel(Math.min(...ys)) + rel(Math.max(...ys))) / 2, name).toBeCloseTo(centre, 2);
+      expect(Math.max(...ys) - base, name).toBeLessThan(3.08); // under the gold
+      const mat = band[0].getMaterial()!;
+      expect(mat.getNormalTexture(), name).not.toBeNull();
+      const { w, h, rgba } = decode(mat.getBaseColorTexture()!.getImage()!);
+      expect([w, h], name).toEqual([4096, signRows]);
+      const wash = (x: number, y: number) =>
+        (rgba[(y * w + x) * 4] - rgba[(y * w + x) * 4 + 2]) / 255 > 0.24;
+      // the signs between the two rules: rows, then runs of columns
+      const yA = Math.round(h * 0.2);
+      const yB = Math.round(h * 0.8);
+      let r0 = h;
+      let r1 = 0;
+      for (let y = yA; y < yB; y++)
+        for (let x = 0; x < w; x++)
+          if (wash(x, y)) {
+            r0 = Math.min(r0, y);
+            r1 = Math.max(r1, y);
+            break;
+          }
+      const sh = r1 - r0 + 1;
+      expect(sh / ((4096 / 5.5) * signH), name).toBeGreaterThan(0.95); // the sign's size, 18 / 11 cm
+      expect(sh / ((4096 / 5.5) * signH), name).toBeLessThan(1.05);
+      const col: boolean[] = new Array(w).fill(false);
+      for (let x = 0; x < w; x++)
+        for (let y = r0; y <= r1; y++)
+          if (wash(x, y)) {
+            col[x] = true;
+            break;
+          }
+      // repeats: runs of columns apart by less than a third of a sign's height belong together
+      const reps: [number, number][] = [];
+      for (let x = 0; x < w; x++)
+        if (col[x]) {
+          const last = reps[reps.length - 1];
+          if (last && x - last[1] <= sh / 3) last[1] = x;
+          else reps.push([x, x]);
+        }
+      const nom = Math.round((4096 / 5.5) * signH); // the sign as drawn: the washed edge reads a few texels short
+      const t = tpl(nom);
+      expect(reps.length, name).toBeGreaterThanOrEqual(2);
+      for (const [a, b] of reps) {
+        expect(Math.abs(b - a + 1 - t.wpx) / t.wpx, `${name} repeat width`).toBeLessThan(0.06);
+        // the baked repeat IS the phrase: its overlap with the font's own row at that scale, allowing
+        // a few texels of slack (the thin beak tip washes out at the left edge)
+        let best = 0;
+        for (let dx = -14; dx <= 14; dx += 2)
+          for (let dy = -5; dy <= 1; dy++) {
+            let inter = 0;
+            let uni = 0;
+            for (let y = 0; y < nom; y++)
+              for (let x = 0; x < t.wpx; x++) {
+                const yy = r0 + y + dy;
+                const xx = a + x + dx;
+                const A = (rgba[(yy * w + xx) * 4] - rgba[(yy * w + xx) * 4 + 2]) / 255 > 0.19;
+                const B = t.at(x, y) === 1;
+                if (A && B) inter++;
+                if (A || B) uni++;
+              }
+            best = Math.max(best, inter / uni);
+          }
+        expect(best, `${name} IoU`).toBeGreaterThan(0.7); // the fine band's thin strokes wash out in compression;
+      }
+      // equal pitch: the repeats are copies
+      const pitches = reps.slice(1).map(([a], i) => a - reps[i][0]);
+      for (const pch of pitches) expect(Math.abs(pch - pitches[0])).toBeLessThanOrEqual(sh / 6); // the thin beak tip washes out unevenly
+
+      // colour law, and the casing stays white
+      expect(texelsNearHue(rgba, AMETHYST_HUE, HUE_GUARD), name).toBe(0);
+      let sumV = 0;
+      let washed = 0;
+      for (let i = 0; i < w * h; i++) {
+        sumV += Math.max(rgba[i * 4], rgba[i * 4 + 1], rgba[i * 4 + 2]) / 255;
+        if ((rgba[i * 4] - rgba[i * 4 + 2]) / 255 > 0.24) washed++;
+      }
+      expect(sumV / (w * h), name).toBeGreaterThan(0.75);
+      expect(washed / (w * h), name).toBeLessThan(0.1);
     }
   });
 
@@ -688,7 +855,7 @@ describe('House of Life temple asset', () => {
         .map((m) => [m.getName(), m] as const),
     );
     const env = (n: string) => (mats.get(n)!.getExtras() as Record<string, number>).envScale;
-    for (const n of ['limestone', 'frieze']) {
+    for (const n of ['limestone', 'frieze', 'thoth', 'thoth_fine']) {
       expect(mats.get(n)!.getRoughnessFactor(), n).toBeGreaterThanOrEqual(0.45);
       expect(env(n), n).toBeLessThanOrEqual(1.2);
     }

@@ -55,7 +55,7 @@ STATS = {}
 
 MATS = ['sandstone', 'paving', 'wall', 'screen', 'column', 'title', 'cornice', 'granite',
         'limestone', 'papyrus', 'props', 'lamp', 'flame', 'base', 'water', 'poolstone',
-        'gold', 'obelisk', 'lime_warm', 'relief', 'stars', 'frieze']
+        'gold', 'obelisk', 'lime_warm', 'relief', 'stars', 'frieze', 'thoth', 'thoth_fine']
 G.use_materials(MATS)
 
 # ---------------------------------------------------------------- the plan (metres)
@@ -149,6 +149,7 @@ def build_materials():
     plate = load_numpy_image(os.path.join(WORLD, 'refs', 'description-dendera-pl13-screen-walls.jpg'))
     glyph = load_numpy_image(os.path.join(WORLD, 'src', 'title_pr_ankh.png'), alpha=True)
     frieze_alpha = load_numpy_image(os.path.join(WORLD, 'src', 'frieze_signs.png'), alpha=True)
+    thoth_alpha = load_numpy_image(os.path.join(WORLD, 'src', 'thoth_signs.png'), alpha=True)
     # the Luxor obelisks' plates (Description de l'Egypte, A. vol. III pl. 11 and 12): the
     # inscriptions of the six faces are traced from them
     obelisk_plates = {no: load_numpy_image(os.path.join(
@@ -164,7 +165,7 @@ def build_materials():
     # every scene the walls carry, cut from its plate (each plate loaded once)
     scene_crops = R.crops(lambda f: load_numpy_image(os.path.join(WORLD, 'refs', f)))
     TT.write_all(C.TEX, plate, glyph, STATS, obelisk_plates, head_rgba, head_depth, scene_crops,
-                  frieze_alpha)
+                  frieze_alpha, thoth_alpha)
     lin = BH.srgb_lin
 
     def lin_e(c):   # emission colours are given in linear RGB already
@@ -195,6 +196,11 @@ def build_materials():
         # the casing's band of sacred signs (ankh djed was), sunk 3 mm and washed pale gold
         'frieze': BH.make_material('frieze', 'tl_frieze_basecolor.png', normal='tl_frieze_normal.png',
                                    rough=0.5),
+        # the two bands of "Thoth, lord of divine words", the same carved finish
+        'thoth': BH.make_material('thoth', 'tl_thoth_basecolor.png', normal='tl_thoth_normal.png',
+                                  rough=0.5),
+        'thoth_fine': BH.make_material('thoth_fine', 'tl_thoth_fine_basecolor.png',
+                                       normal='tl_thoth_fine_normal.png', rough=0.5),
         'poolstone': BH.make_material('poolstone', 'tl_poolstone_basecolor.png',
                                       normal='tl_poolstone_normal.png', rough=0.5),
         'gold': BH.make_material('gold', color=lin(GOLD_RGB), rough=0.3, metal=0.8,
@@ -226,6 +232,8 @@ def build_materials():
         mats['water'][k] = float(v)
     mats['limestone']['envScale'] = 1.0
     mats['frieze']['envScale'] = 1.0
+    mats['thoth']['envScale'] = 1.0
+    mats['thoth_fine']['envScale'] = 1.0
     mats['gold']['envScale'] = 4.0
     mats['gold']['duskGlow'] = 4.0
     assert set(mats) == set(G.MATS)

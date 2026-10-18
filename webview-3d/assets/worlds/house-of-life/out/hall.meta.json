@@ -11,7 +11,7 @@
       "lightmap": {
         "file": "lightmap_golden.ktx2",
         "uv": 1,
-        "intensity": 3.3489638236897923,
+        "intensity": 3.3520728096607297,
         "colorSpace": "srgb"
       },
       "sun": {
@@ -20,7 +20,7 @@
           0.84,
           0.64
         ],
-        "intensity": 2.99994382634906,
+        "intensity": 2.999940735074862,
         "penumbra": 0.02,
         "position": [
           4.78123388450066,
@@ -43,7 +43,7 @@
       "lightmap": {
         "file": "lightmap_dusk.ktx2",
         "uv": 1,
-        "intensity": 0.6843830305533001,
+        "intensity": 0.6841908026495506,
         "colorSpace": "srgb"
       },
       "sun": null

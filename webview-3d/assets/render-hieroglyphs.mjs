@@ -38,6 +38,23 @@ const FRIEZE = {
   fillHoles: [false, true, false],
   minFill: 1.1,
 };
+// The Thoth bands (round G, Yousef 2026-10-19): the classic epithet "Thoth, lord of divine words",
+// ḏḥwtj nb mdw-nṯr, eight signs in one row: ḏḥwtj = G26 X1 Z4 C3 (U+1315D U+133CF U+133ED U+1305F),
+// nb mdw-nṯr = V30 R8 S43 Z3 (U+1339F U+132B9 U+13303 U+133EA; the god sign before the staff is the
+// honorific transposition, Wb 2,181.6). Exactly these eight code points, in this order, no other text.
+// The animal signs face the start of the line, as Noto draws them. Every sign is filled as a silhouette
+// (the font draws outlines and these are carved): a light closing, then every enclosed hollow filled.
+const THOTH = {
+  text: '\u{1315D}\u{133CF}\u{133ED}\u{1305F}\u{1339F}\u{132B9}\u{13303}\u{133EA}',
+  out: 'thoth_signs.png',
+  px: 640,
+  gap: 0.12,
+  R: 10,
+  signR: [10, 10, 10, 10, 10, 10, 10, 10],
+  fillHoles: [true, true, true, true, true, true, true, true],
+  minFill: 2.0,
+  maxFill: 4.0,
+};
 const PAD = 24;
 
 if (!existsSync(FONT)) throw new Error(`font not found: ${FONT}`);
@@ -45,7 +62,7 @@ const browser = await chromium.launch();
 try {
   const page = await browser.newPage();
   await page.setContent('<!doctype html><html lang="egy"><body></body></html>');
-  for (const job of [TITLE, FRIEZE]) {
+  for (const job of [TITLE, FRIEZE, THOTH]) {
     const r = await page.evaluate(
       async ({ text, fontB64, px, gap, pad, R, signR, fillHoles }) => {
         const bytes = Uint8Array.from(atob(fontB64), (c) => c.charCodeAt(0));
@@ -176,7 +193,7 @@ try {
     if (r.status !== 'loaded')
       throw new Error(`Noto Sans Egyptian Hieroglyphs did not load (${r.status})`);
     if (r.ink < 0.05 * r.w * r.h) throw new Error(`the title rendered almost no ink (${r.ink} px)`);
-    if (r.solid < (job.minFill ?? 1.8) * r.ink || r.solid > 3.5 * r.ink)
+    if (r.solid < (job.minFill ?? 1.8) * r.ink || r.solid > (job.maxFill ?? 3.5) * r.ink)
       throw new Error(`the solid fill looks wrong (${r.solid} solid px from ${r.ink} outline px)`);
     writeFileSync(join(SRC, job.out), Buffer.from(r.url.slice(r.url.indexOf(',') + 1), 'base64'));
     console.log(
