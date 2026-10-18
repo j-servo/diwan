@@ -11,8 +11,16 @@ export interface AgentState {
   jsonlFile: string;
   fileOffset: number;
   lineBuffer: string;
+  /** An over-long line was dropped; skip input up to the next newline. */
+  lineBufferOverflowed?: boolean;
+  /** The over-long-line warning was already logged for this session. */
+  lineBufferWarned?: boolean;
   activeToolIds: Set<string>;
   activeToolStatuses: Map<string, string>;
+  /** Fuller action text per live tool (see formatToolDetail); optional so it costs nothing where unused. */
+  activeToolDetails?: Map<string, string>;
+  /** The session's working folder, as its transcript records state it; used to shorten paths in `detail`. */
+  cwd?: string;
   activeToolNames: Map<string, string>;
   activeSubagentToolIds: Map<string, Set<string>>; // parentToolId → active sub-tool IDs
   activeSubagentToolNames: Map<string, Map<string, string>>; // parentToolId → (subToolId → toolName)
@@ -22,6 +30,10 @@ export interface AgentState {
   hadToolsInTurn: boolean;
   /** Workspace folder name (only set for multi-root workspaces) */
   folderName?: string;
+  /** Short label for the session (see sessionLabel.ts); undefined until the transcript yields one */
+  sessionLabel?: string;
+  /** What the label is built from, best-known first. Transient — not persisted. */
+  labelSources?: { name?: string; aiTitle?: string; prompt?: string };
   /** Timestamp of last JSONL data received (ms since epoch) */
   lastDataAt: number;
   /** Total JSONL lines processed for this agent */

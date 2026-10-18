@@ -2,8 +2,8 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
+import { getBrand } from './brand.js';
 import {
-  LAYOUT_FILE_DIR,
   LAYOUT_FILE_NAME,
   LAYOUT_FILE_POLL_INTERVAL_MS,
   LAYOUT_REVISION_KEY,
@@ -15,7 +15,7 @@ export interface LayoutWatcher {
 }
 
 function getLayoutFilePath(): string {
-  return path.join(os.homedir(), LAYOUT_FILE_DIR, LAYOUT_FILE_NAME);
+  return path.join(os.homedir(), getBrand().dirName, LAYOUT_FILE_NAME);
 }
 
 export function readLayoutFromFile(): Record<string, unknown> | null {

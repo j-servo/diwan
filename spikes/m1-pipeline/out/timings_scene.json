@@ -1,0 +1,23 @@
+{
+  "generate low-poly corner (wall booleans, grille, desk, lamp, floor)": 0.26,
+  "lightmap UV unwrap + pack (UVLightmap)": 1.72,
+  "lightmap bake A_sky 1024^2 @512spp (GPU)": 12.53,
+  "lightmap bake B_sunbounce 1024^2 @512spp (GPU)": 15.8,
+  "lightmap bake C_sundirect 1024^2 @512spp (GPU)": 2.04,
+  "gobo projection (numpy)": 0.17,
+  "export GLB": 0.11,
+  "grille_holes": 55,
+  "tris_wall": 543,
+  "tris_floor": 8,
+  "tris_desk": 756,
+  "tris_lamp": 504,
+  "tris_rods": 60,
+  "tris_grille": 4448,
+  "tris_corner_total": 6319,
+  "lightmap_scale_M": 1.2725550545454025,
+  "sun_patch_C_up": 0.7943030595779419,
+  "sun_patch_texels": 2785,
+  "cycles_V_over_E": 0.3089290488833825,
+  "spot_intensity_three": 3.8821169218100664,
+  "glb_raw_bytes": 8074636
+}

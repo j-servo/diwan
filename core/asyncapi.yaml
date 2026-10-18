@@ -84,6 +84,7 @@ components:
         - $ref: '#/components/schemas/AgentClosed'
         - $ref: '#/components/schemas/AgentSelected'
         - $ref: '#/components/schemas/ExistingAgents'
+        - $ref: '#/components/schemas/AgentLabel'
         # Agent status / tool activity
         - $ref: '#/components/schemas/AgentStatus'
         - $ref: '#/components/schemas/AgentToolStart'
@@ -118,10 +119,23 @@ components:
         - $ref: '#/components/schemas/WorkspaceFolders'
         # Diagnostics
         - $ref: '#/components/schemas/AgentDiagnostics'
+        # Steering (Diwan --steer only)
+        - $ref: '#/components/schemas/SteerWelcome'
+        - $ref: '#/components/schemas/SteerAgent'
+        - $ref: '#/components/schemas/SteerApproval'
+        - $ref: '#/components/schemas/SteerApprovalClear'
+        - $ref: '#/components/schemas/SteerReply'
+        - $ref: '#/components/schemas/SteerResult'
       discriminator: type
 
     ClientMessage:
       oneOf:
+        - $ref: '#/components/schemas/SteerHello'
+        - $ref: '#/components/schemas/SteerLaunch'
+        - $ref: '#/components/schemas/SteerAnswer'
+        - $ref: '#/components/schemas/SteerFollowUp'
+        - $ref: '#/components/schemas/SteerInterrupt'
+        - $ref: '#/components/schemas/SteerStop'
         - $ref: '#/components/schemas/WebviewReady'
         - $ref: '#/components/schemas/LaunchAgent'
         - $ref: '#/components/schemas/FocusAgent'
@@ -190,6 +204,9 @@ components:
         hueShift:
           type: integer
           description: Server-assigned hue shift in degrees (0-360).
+        steerable:
+          type: boolean
+          description: True for a session Diwan itself launched (steer mode); the client may show its controls.
 
     AgentClosed:
       description: An agent has been removed from the office.
@@ -243,6 +260,24 @@ components:
           additionalProperties:
             type: boolean
 
+    AgentLabel:
+      description: |
+        A short human label for the agent's session (at most ~18 characters): the
+        session's own title when its transcript carries one, else the first words
+        of the first prompt. Sent when the label first becomes known and whenever
+        it changes, and re-sent to a client that connects later. Clients fall back
+        to `folderName` until one arrives.
+      type: object
+      additionalProperties: false
+      required: [type, id, label]
+      properties:
+        type:
+          const: agentLabel
+        id:
+          type: integer
+        label:
+          type: string
+
     AgentStatus:
       description: Active vs waiting state for an agent (drives character animation).
       type: object
@@ -282,6 +317,12 @@ components:
         status:
           type: string
           description: Human-readable status to display (e.g. "Reading foo.ts").
+        detail:
+          type: string
+          description: >-
+            The fuller action behind the status (whole Bash command, file path,
+            URL, ...): secrets masked, at most 400 characters and 6 lines.
+            Read-only clients may show it; status stays the short form.
         toolName:
           type: string
         permissionActive:
@@ -357,6 +398,9 @@ components:
           type: string
         status:
           type: string
+        detail:
+          type: string
+          description: The fuller action behind the status; see AgentToolStart.detail.
 
     SubagentToolDone:
       description: Sub-agent finished a tool.
@@ -1063,6 +1107,273 @@ components:
       properties:
         type:
           const: requestDiagnostics
+
+    # ── Steering (Diwan --steer) ───────────────────────────────────
+    # Control messages are honoured only on a connection that proved the
+    # per-run control token (steerHello) from a loopback Origin. Everything
+    # else on the socket stays read-only.
+
+    SteerHello:
+      description: First message of a steer-mode page. Carries the per-run control token from the page's meta tag.
+      type: object
+      additionalProperties: false
+      required: [type, token]
+      properties:
+        type:
+          const: steerHello
+        token:
+          type: string
+          maxLength: 256
+
+    SteerLaunch:
+      description: Launch a Claude Code session in a registered project.
+      type: object
+      additionalProperties: false
+      required: [type, project, task, model, effort, tokenBudget]
+      properties:
+        type:
+          const: steerLaunch
+        ref:
+          type: string
+          maxLength: 64
+          description: Client-chosen token echoed in the steerResult.
+        project:
+          type: string
+          maxLength: 4096
+          description: A path from steerWelcome.projects.
+        task:
+          type: string
+          maxLength: 8000
+        model:
+          type: string
+          maxLength: 64
+          description: The exact model id, one of claude-opus-5-5, claude-sonnet-5-5, claude-haiku-5-5. Required.
+        effort:
+          type: string
+          description: One of low, medium, high, xhigh, max. Sent as the SDK effort option. The model may lower it if it does not support it.
+        tokenBudget:
+          type: integer
+          minimum: 50000
+          maximum: 10000000
+          description: Cap on total tokens processed (input + cache + output, sub-agents included).
+
+    SteerAnswer:
+      description: Approve or deny one pending tool request. Answers once; a second or stale answer is rejected.
+      type: object
+      additionalProperties: false
+      required: [type, requestId, allow]
+      properties:
+        type:
+          const: steerAnswer
+        requestId:
+          type: string
+          maxLength: 64
+        allow:
+          type: boolean
+
+    SteerFollowUp:
+      description: Send a user message into a launched session.
+      type: object
+      additionalProperties: false
+      required: [type, id, text]
+      properties:
+        type:
+          const: steerFollowUp
+        id:
+          type: integer
+        text:
+          type: string
+          maxLength: 8000
+
+    SteerInterrupt:
+      description: Interrupt the current turn of a launched session.
+      type: object
+      additionalProperties: false
+      required: [type, id]
+      properties:
+        type:
+          const: steerInterrupt
+        id:
+          type: integer
+
+    SteerStop:
+      description: Abort a launched session; its scholar leaves the hall.
+      type: object
+      additionalProperties: false
+      required: [type, id]
+      properties:
+        type:
+          const: steerStop
+        id:
+          type: integer
+
+    SteerWelcome:
+      description: Reply to a valid steerHello (to that socket only). Never carries a secret.
+      type: object
+      additionalProperties: false
+      required: [type, projects]
+      properties:
+        type:
+          const: steerWelcome
+        projects:
+          type: array
+          items:
+            $ref: '#/components/schemas/SteerProject'
+
+    SteerProject:
+      type: object
+      additionalProperties: false
+      required: [path, name]
+      properties:
+        path:
+          type: string
+        name:
+          type: string
+
+    SteerAgent:
+      description: A launched scholar's steering state. Marks the agent steerable and carries model, effort and tokens processed against the cap.
+      type: object
+      additionalProperties: false
+      required: [type, id, steerable, running, model, effort, tokensUsed, tokenCap, turn, answerSeq]
+      properties:
+        type:
+          const: steerAgent
+        id:
+          type: integer
+        steerable:
+          type: boolean
+        running:
+          type: boolean
+        model:
+          type: string
+        effort:
+          type: string
+          description: The level the session reports it is actually on; the requested one until it reports.
+        tokensUsed:
+          type: integer
+        tokenCap:
+          type: integer
+        turn:
+          type: string
+          description: working (a turn is running), answered (the last turn ended with a final answer, "Answer ready") or error (it ended in an error).
+        answerSeq:
+          type: integer
+          description: Counts answered turns; a client compares it with the last one the user saw.
+        turnError:
+          type: string
+          description: Why the last turn ended in an error (turn = error).
+        stopped:
+          type: string
+          description: Why a stopped scholar stopped, for its card ("token budget reached (512K of 500K)", "stopped", an error).
+
+    SteerApproval:
+      description: A launched session asks to run a tool. Unanswered it is denied (after DIWAN_APPROVAL_TIMEOUT_MS, on stop, on shutdown).
+      type: object
+      additionalProperties: false
+      required: [type, id, requestId, tool, detail]
+      properties:
+        type:
+          const: steerApproval
+        id:
+          type: integer
+        requestId:
+          type: string
+        tool:
+          type: string
+        detail:
+          type: string
+          description: The full action text, multi-line. A control socket gets the approval card's own masking (a mask never swallows shell syntax; invisible characters shown as ⟦U+XXXX⟧); every other socket gets the feed's redacted text.
+        truncated:
+          type: boolean
+        masked:
+          type: integer
+          description: How many values were masked in `detail` (control sockets only).
+        hidden:
+          type: boolean
+          description: Invisible or control characters were found and made visible (control sockets only).
+        lines:
+          type: integer
+          description: Lines in the whole command before any cut (control sockets only).
+        chars:
+          type: integer
+          description: Characters in the whole command before any cut (control sockets only).
+        extras:
+          type: array
+          description: Non-default tool settings and the SDK's stated reason, shown under the command (control sockets only).
+          items:
+            $ref: '#/components/schemas/SteerApprovalExtra'
+
+    SteerApprovalExtra:
+      type: object
+      additionalProperties: false
+      required: [name, value]
+      properties:
+        name:
+          type: string
+        value:
+          type: string
+        warn:
+          type: boolean
+          description: A red-flag setting; shown in a warm danger colour.
+
+    SteerApprovalClear:
+      description: A pending request was resolved.
+      type: object
+      additionalProperties: false
+      required: [type, id, requestId, outcome]
+      properties:
+        type:
+          const: steerApprovalClear
+        id:
+          type: integer
+        requestId:
+          type: string
+        outcome:
+          $ref: '#/components/schemas/SteerOutcome'
+
+    SteerReply:
+      description: One entry of a launched scholar's conversation (the task, an assistant reply, a follow-up, a one-line tool step). Sent to CONTROL sockets only; a late control client is sent the kept history (the last 200 entries or 200 KB). Untrusted content.
+      type: object
+      additionalProperties: false
+      required: [type, id, seq, role, text, at]
+      properties:
+        type:
+          const: steerReply
+        id:
+          type: integer
+        seq:
+          type: integer
+          description: Per-scholar, increasing; a repeat of a seq replaces nothing.
+        role:
+          type: string
+          description: assistant, user or tool.
+        text:
+          type: string
+          description: At most 20 KB; a longer text is cut and truncated is set.
+        at:
+          type: number
+          description: Epoch milliseconds.
+        truncated:
+          type: boolean
+
+    SteerOutcome:
+      type: string
+      enum: [approved, denied, timeout, stopped, shutdown, budget]
+
+    SteerResult:
+      description: Outcome of a control message that needs a reply (to that socket only).
+      type: object
+      additionalProperties: false
+      required: [type, ok]
+      properties:
+        type:
+          const: steerResult
+        ok:
+          type: boolean
+        ref:
+          type: string
+        error:
+          type: string
 
     # ── Supporting schemas ─────────────────────────────────────────
 

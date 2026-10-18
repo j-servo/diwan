@@ -50,3 +50,12 @@ agent-orchestrator.yaml
 .ao/
 .serena/
 tasks/
+# Diwan promo renders (shared as local files) and tuning sheets
+/docs/superpowers/promo/*.mp4
+/docs/superpowers/promo/preview-*.jpg
+
+# Diwan: internal working notes, render scratch, raw bakes and macOS temp files
+.superpowers/
+scratch-*/
+**/out/raw/
+*.sb-*

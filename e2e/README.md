@@ -285,13 +285,13 @@ This section is auto-generated. Do not edit between the markers; CI fails on dri
 - `e2e/claude/hooks-off/carpet.spec.ts:152` — the carpet eyedropper copies a tile’s variant (Carpet)
 - `e2e/claude/hooks-off/carpet.spec.ts:180` — a carpet stroke is a single undo entry (Carpet)
 - `e2e/claude/hooks-off/carpet.spec.ts:201` — carpet tiles persist across a save + panel reload (Carpet)
-- `e2e/claude/hooks-off/carpet.spec.ts:297` — a seeded carpet coexists with furniture on the same tile (Carpet surface placement (seeded))
+- `e2e/claude/hooks-off/carpet.spec.ts:298` — a seeded carpet coexists with furniture on the same tile (Carpet surface placement (seeded))
 
 ### `@area:pets` (3 tests)
 
 - `e2e/claude/hooks-off/pets.spec.ts:90` — pet sprites load, broadcast, and expose manifest names in the editor (Pets)
 - `e2e/claude/hooks-off/pets.spec.ts:117` — placing a pet toggles it on/off and persists across a panel reload (Pets)
-- `e2e/claude/hooks-off/pets.spec.ts:202` — clicking a pet shows a heart bubble that auto-dismisses and dismisses on re-click (Pets)
+- `e2e/claude/hooks-off/pets.spec.ts:205` — clicking a pet shows a heart bubble that auto-dismisses and dismisses on re-click (Pets)
 
 <!-- END:E2E-INVENTORY -->
 

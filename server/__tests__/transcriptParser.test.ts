@@ -349,3 +349,39 @@ describe('transcriptParser: teammate spawn results (new-harness implicit teams)'
     expect(agent.isTeamLead).toBeUndefined();
   });
 });
+
+describe('transcriptParser: tool detail', () => {
+  it('sends the fuller text, relative to the record cwd, on agentToolStart and subagentToolStart', () => {
+    setHookProvider(claudeProvider);
+    const agents = new AgentStateStore();
+    const agent = createTestAgent();
+    agents.set(1, agent);
+    const messages: Array<Record<string, unknown>> = [];
+    agents.on('broadcast', (msg) => messages.push(msg as Record<string, unknown>));
+    const wt = new Map<number, ReturnType<typeof setTimeout>>();
+    const pt = new Map<number, ReturnType<typeof setTimeout>>();
+
+    const withCwd = (line: string) => JSON.stringify({ ...JSON.parse(line), cwd: '/p/app' });
+    processTranscriptLine(
+      1,
+      withCwd(agentToolUseRecord('t1', 'Read', { file_path: '/p/app/src/a.ts' })),
+      agents,
+      wt,
+      pt,
+    );
+    processTranscriptLine(
+      1,
+      agentToolUseRecord('t2', 'Bash', {
+        command: 'git push --force origin main with a long tail',
+      }),
+      agents,
+      wt,
+      pt,
+    );
+    const starts = messages.filter((m) => m.type === 'agentToolStart');
+    expect(starts[0].detail).toBe('src/a.ts');
+    expect(starts[1].detail).toBe('git push --force origin main with a long tail');
+    expect(String(starts[1].status).endsWith('\u2026')).toBe(true);
+    expect(agent.activeToolDetails?.get('t2')).toBe(starts[1].detail);
+  });
+});

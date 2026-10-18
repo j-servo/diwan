@@ -1,0 +1,27 @@
+# Arabic strings: for Yousef to verify before anything ships
+
+Every Arabic string that appears in a Diwan world is listed here, with its meaning and where it is used. Nothing is Qur'anic. Status **UNVERIFIED** means Yousef has not checked it yet.
+
+**Fonts.** The inscription is set in **Reem Kufi** (SIL Open Font License 1.1), vendored with its licence in `webview-3d/assets/fonts/` so the asset build is the same on any machine. Only its rendered output is baked into the hall's geometry; the font file is never loaded at runtime. The pipeline reads the font from that path and fails loudly if it is missing, so it can never fall back silently to another typeface.
+
+## House of Wisdom (M1)
+
+### 1. بيت الحكمة
+
+| Field           | Value                                                                                                                                                                                                                                                                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Exact string    | `بيــت الحكــــمة`: the name بيت الحكمة drawn out with kashida (tatweel, U+0640), 2 between ي and ت, 4 between ك and م (U+0628 U+064A U+0640 U+0640 U+062A, space, U+0627 U+0644 U+062D U+0643 U+0640 U+0640 U+0640 U+0640 U+0645 U+0629). Kashida only lengthens the joins; the letters and the reading are unchanged.                    |
+| Transliteration | Bayt al-Ḥikma                                                                                                                                                                                                                                                                                                                              |
+| Meaning         | "The House of Wisdom", the name of the Abbasid academy and library in Baghdad. A name, not scripture.                                                                                                                                                                                                                                      |
+| Typeface        | **Reem Kufi SemiBold (600)**, a modern Fatimid-style Kufic display face (Yousef's choice, 2026-10-12; replaces Diwan Kufi, whose ḥā' and kāf could read as "2" and "7"). Shaped and joined by Chromium's text engine (HarfBuzz), right to left, with every dot (i'jam).                                                                    |
+| Treatment       | Carved-stucco relief: raised plaster letters, 3.5 cm proud and lightly bevelled, on the madder-red ground of the inscription panel. Letters are traced from the rendered glyphs as outlines and extruded (no hand-drawn letterforms).                                                                                                      |
+| Where           | The inscription panel in the portal frame (pishtaq) on the north arcade, above the portal arch: the panel is 4.1 × 1.1 m (widened from 3.3 m for a landscape inscription, Yousef 2026-10-12) and the word 3.6 × 0.59 m (about 88% of its width), centred on the hall's axis, facing the courtyard. GLB node `kufic_letters` in `hall.glb`. |
+| Source          | String and font: `webview-3d/assets/render-glyphs.mjs` (`KUFIC`). Rendered glyphs (committed): `webview-3d/assets/worlds/house-of-wisdom/src/kufic_bayt_al_hikma.png`. Relief: `webview-3d/assets/blender/hall_dressing.py` (`build_kufic`).                                                                                               |
+| Images          | Close-up: `docs/superpowers/m1/img/process/title-reem-kufi.jpg`.                                                                                                                                                                                                                                                                           |
+| Status          | **UNVERIFIED: please check letter by letter.** To change the wording or the font, edit `KUFIC` in `render-glyphs.mjs` and run `npm --workspace webview-3d run assets` (about 3 minutes). It replaces the hand-built square-Kufic grid (`kufic.py`, now deleted) and its misreading risk (الحلمة, العلمة).                                  |
+
+**Letter by letter:** not yet re-checked for Reem Kufi. The relief traced 14 contours (12 separate bodies plus 2 counters) and the generator checks that the filled area equals the traced ink area. The earlier Diwan Kufi table no longer applies.
+
+**Please look for:** that every letter and all seven dots (ب 1, ي 2, ت 2, ة 2) read naturally to you at the default camera and in the close-up.
+
+No other Arabic text is in the hall. The board, bubbles and labels are English (Task 6's "world voice" is English). The calligraphy panel العلم نور that was briefed for Task 2b was dropped at Yousef's request (2026-10-12) and is not in the hall. The themed north chambers' papers, maps and drawings (2026-10-15) carry no Arabic and no letterforms at all: ruled bars stand in for writing, so there is nothing in them to verify.

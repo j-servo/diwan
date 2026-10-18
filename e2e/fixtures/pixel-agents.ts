@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { applyAllureLabels } from '../helpers/allure-labels';
+import type { TestHooksWindow } from '../helpers/editor';
 import { launchVSCode, type VSCodeSession, waitForWorkbench } from '../helpers/launch';
 import { killTrackedExternalProcesses } from '../helpers/mock-claude';
 import {
@@ -181,7 +182,10 @@ export const test = base.extend<{
           const wvFrames = window.frames();
           for (const f of wvFrames) {
             if (!f.url().startsWith('vscode-webview://')) continue;
-            const log = await f.evaluate(() => window.__pixelAgentsTestHooks?.messageLog ?? null);
+            const log = await f.evaluate(
+              () =>
+                (globalThis.window as TestHooksWindow).__pixelAgentsTestHooks?.messageLog ?? null,
+            );
             if (log) {
               await testInfo.attach('webview-message-log', {
                 body: JSON.stringify(log, null, 2),

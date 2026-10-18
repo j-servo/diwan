@@ -14,7 +14,7 @@ import * as path from 'path';
 
 import type { HookProvider } from '../../core/src/provider.js';
 import type { AgentStateStore } from './agentStateStore.js';
-import { DEFAULT_MAX_CONTEXT_TOKENS } from './constants.js';
+import { DEFAULT_MAX_CONTEXT_TOKENS, DIWAN_SILENT_CHECK_INTERVAL_MS } from './constants.js';
 import { DismissalTracker } from './dismissalTracker.js';
 import {
   adoptExternalSessionFromHook,
@@ -39,6 +39,7 @@ import { HookEventHandler } from './hookEventHandler.js';
 import { assignPaletteIfNeeded } from './paletteAssigner.js';
 import { PathSet, pathsMatch } from './pathKey.js';
 import { SessionRouter } from './sessionRouter.js';
+import { silentAgentIds } from './silentRetire.js';
 import { SubagentWatch } from './subagentWatch.js';
 import { cancelPermissionTimer, cancelWaitingTimer } from './timerManager.js';
 import {
@@ -73,6 +74,9 @@ export class AgentRuntime {
   readonly activeAgentId = { current: null as number | null };
   private externalScanTimer: ReturnType<typeof setInterval> | null = null;
   private staleCheckTimer: ReturnType<typeof setInterval> | null = null;
+  /** Diwan steer mode: launched scholars that are still running stay in the hall. */
+  silentRetireExempt?: (agent: AgentState) => boolean;
+  private silentRetireTimer: ReturnType<typeof setInterval> | null = null;
 
   // Configuration refs (mutable, shared with scanners)
   readonly watchAllSessions = { current: false };
@@ -449,6 +453,32 @@ export class AgentRuntime {
     );
   }
 
+  /**
+   * Retire scholars whose transcript has gone silent (see silentRetire.ts for the limits).
+   * Retiring forgets the session as well as the agent, so the next hook event or scanner
+   * pass for a resumed session adopts it afresh.
+   */
+  startSilentRetire(): void {
+    if (this.silentRetireTimer) return;
+    const mtimeOf = (file: string): number | undefined => {
+      try {
+        return fs.statSync(file).mtimeMs;
+      } catch {
+        return undefined;
+      }
+    };
+    this.silentRetireTimer = setInterval(() => {
+      for (const id of silentAgentIds(this.store, Date.now(), mtimeOf, this.silentRetireExempt)) {
+        const agent = this.store.get(id);
+        if (!agent) continue;
+        this.unregisterAgent(agent.sessionId);
+        this.knownJsonlFiles.delete(agent.jsonlFile);
+        this.removeAgent(id);
+      }
+    }, DIWAN_SILENT_CHECK_INTERVAL_MS);
+    this.silentRetireTimer.unref();
+  }
+
   // ── Restore persisted external agents (standalone) ──
 
   /**
@@ -572,6 +602,10 @@ export class AgentRuntime {
     if (this.staleCheckTimer) {
       clearInterval(this.staleCheckTimer);
       this.staleCheckTimer = null;
+    }
+    if (this.silentRetireTimer) {
+      clearInterval(this.silentRetireTimer);
+      this.silentRetireTimer = null;
     }
 
     for (const id of [...this.store.keys()]) {

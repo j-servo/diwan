@@ -10,7 +10,8 @@
   },
   "workspaces": [
     "server",
-    "webview-ui"
+    "webview-ui",
+    "webview-3d"
   ],
   "icon": "icon.png",
   "license": "MIT",
@@ -29,7 +30,8 @@
   ],
   "main": "./dist/extension.js",
   "bin": {
-    "pixel-agents": "./dist/cli.js"
+    "pixel-agents": "./dist/cli.js",
+    "diwan": "./dist/diwan.js"
   },
   "files": [
     "CHANGELOG.md",
@@ -93,6 +95,8 @@
     "prepack": "npm run package",
     "build:extension": "node esbuild.js --production",
     "build:webview": "cd webview-ui && npm run build",
+    "build:diwan": "node esbuild.js --diwan --production && cd webview-3d && npm run build",
+    "diwan": "node dist/diwan.js",
     "compile": "npm run asyncapi:generate && npm run check-types && npm run lint && node esbuild.js && npm run build:webview",
     "build": "npm run compile",
     "watch": "npm-run-all -p watch:*",
@@ -157,6 +161,7 @@
     "webview-ui/**/*.{ts,tsx,js,css,json}": "prettier --write"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.301",
     "@fastify/cors": "^11.2.0",
     "@fastify/static": "^10.1.2",
     "@fastify/websocket": "^11.2.0",

@@ -27,6 +27,7 @@ export interface TestHooksWindow extends Window {
     getAreaTiles?: () => Array<{ col: number; row: number; label: string }>;
     getAreaMappings?: () => Record<string, string[]>;
     getShowAreas?: () => boolean;
+    getFurnitureCount?: () => number;
     getAgentSeats?: () => Array<{
       id: number;
       seatId: string | null;

@@ -9,7 +9,8 @@ import { hasPromotedBackgroundAgent } from './teamUtils.js';
  * 2. Regular tools
  * 3. Background tools with runInBackground + isTeammateSpawn flags, skipping promoted spawns
  * 4. Waiting status
- * 5. Context usage
+ * 5. Session label
+ * 6. Context usage
  */
 export function resendAgentActivity(
   send: (message: Record<string, unknown>) => void,
@@ -42,6 +43,7 @@ export function resendAgentActivity(
         id,
         toolId,
         status,
+        detail: agent.activeToolDetails?.get(toolId),
         toolName,
       });
     }
@@ -60,6 +62,7 @@ export function resendAgentActivity(
         id,
         toolId,
         status,
+        detail: agent.activeToolDetails?.get(toolId),
         toolName,
         runInBackground: true,
         isTeammateSpawn: agent.teammateSpawnToolIds?.has(toolId) || undefined,
@@ -75,7 +78,12 @@ export function resendAgentActivity(
       });
     }
 
-    // 5. Context usage
+    // 5. Session label
+    if (agent.sessionLabel) {
+      send({ type: 'agentLabel', id, label: agent.sessionLabel });
+    }
+
+    // 6. Context usage
     if (agent.contextTokens > 0) {
       send({
         type: 'agentContextUsage',

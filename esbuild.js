@@ -83,6 +83,12 @@ const esbuildProblemMatcherPlugin = {
 };
 
 async function main() {
+  if (process.argv.includes('--diwan')) {
+    // `npm run build:diwan`: just the Diwan CLI, its hook script and the bundled assets.
+    copyAssets();
+    await buildDiwan();
+    return;
+  }
   const ctx = await esbuild.context({
     entryPoints: ['adapters/vscode/extension.ts'],
     bundle: true,
@@ -110,6 +116,7 @@ async function main() {
     buildHooks();
     await buildCli();
     await buildUninstall();
+    await buildDiwan();
   }
 }
 
@@ -145,6 +152,42 @@ async function buildCli() {
   if (!production) {
     console.log('[build] CLI bundled: dist/cli.mjs');
   }
+}
+
+/** Bundle `diwan` (dist/diwan.js) and the hook script it installs (dist/diwan-hooks/claude-hook.js). */
+async function buildDiwan() {
+  await esbuild.build({
+    entryPoints: ['server/src/diwan/cli.ts'],
+    bundle: true,
+    format: 'cjs',
+    minify: production,
+    sourcemap: !production,
+    platform: 'node',
+    outfile: 'dist/diwan.js',
+    external: [
+      'fastify',
+      '@fastify/websocket',
+      '@fastify/static',
+      '@fastify/cors',
+      // Loaded only by 'diwan --steer', at the first launch; it ships its own claude binary.
+      '@anthropic-ai/claude-agent-sdk',
+    ],
+    // The runtime's per-event debug chatter is for developers; a dashboard left running is quiet.
+    define: { ...versionDefine, 'process.env.PIXEL_AGENTS_DEBUG': '"0"' },
+    logLevel: 'silent',
+  });
+  fs.chmodSync(path.join(__dirname, 'dist', 'diwan.js'), 0o755);
+  await esbuild.build({
+    entryPoints: ['server/src/diwan/hook.ts'],
+    bundle: true,
+    format: 'cjs',
+    platform: 'node',
+    target: 'node18',
+    outfile: 'dist/diwan-hooks/claude-hook.js',
+    banner: { js: '#!/usr/bin/env node' },
+    logLevel: 'silent',
+  });
+  console.log('✓ Built dist/diwan.js and dist/diwan-hooks/claude-hook.js');
 }
 
 main().catch((e) => {

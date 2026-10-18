@@ -41,6 +41,14 @@ export const CONTEXT_WINDOW_TIERS = [200_000, 1_000_000] as const;
  *  adoption or restore. Comfortably more than one turn's worth of records. */
 export const CONTEXT_SEED_TAIL_BYTES = 256 * 1024;
 
+// ── Session Labels ──────────────────────────────────────────
+/** Widest session label (ellipsis included) shown on a name tag or in the terminal. */
+/** A transcript line without a newline longer than this is dropped (1 MB), not buffered forever. */
+export const LINE_BUFFER_MAX_CHARS = 1_048_576;
+export const SESSION_LABEL_MAX = 18;
+/** How much of a transcript's head, and of its tail, to read for a label on adoption. */
+export const SESSION_LABEL_SEED_BYTES = 256 * 1024;
+
 // ── Global Session Scanning ─────────────────────────────────
 /** Only adopt global JSONL files larger than this (filters out empty/init-only sessions) */
 export const GLOBAL_SCAN_ACTIVE_MIN_SIZE = 3_072; // 3KB
@@ -56,6 +64,8 @@ export {
   SERVER_JSON_DIR,
   SERVER_JSON_NAME,
   TASK_DESCRIPTION_DISPLAY_MAX_LENGTH,
+  TOOL_DETAIL_MAX_CHARS,
+  TOOL_DETAIL_MAX_LINES,
 } from '../../core/src/constants.js';
 
 // ── Multi-Server Discovery ──────────────────────────────────
@@ -107,3 +117,19 @@ export const PALETTE_COUNT = 6;
  *  clientMessageHandler to guard saveAgentSeats payloads from a remote or
  *  hand-edited source corrupting the stored values with out-of-range values. */
 export const HUE_SHIFT_MAX_DEG = 360;
+
+// ── Diwan ───────────────────────────────────────────────────
+/** Hard stop for one run of Diwan's hook script, whatever the server does. */
+export const DIWAN_HOOK_DEADLINE_MS = 150;
+/** WebSocket close code (policy violation) for a control message without the control scope, or a flood. */
+export const WS_CLOSE_POLICY_VIOLATION = 1008;
+/** Largest WebSocket message a read-only/steer Diwan socket accepts (a task is at most 8,000 characters). */
+export const DIWAN_WS_MAX_PAYLOAD = 128 * 1024;
+/** A scholar whose transcript has been silent this long leaves the hall (no hooks: nothing else
+ *  would ever remove it). It returns when the session writes again. */
+export const DIWAN_SILENT_RETIRE_MS = 10 * 60_000;
+/** The same rule as a safety net for hooked sessions, whose SessionEnd normally removes them,
+ *  and for a pending approval. */
+export const DIWAN_SILENT_RETIRE_HOOKS_MS = 30 * 60_000;
+/** How often the hall checks for silent scholars. */
+export const DIWAN_SILENT_CHECK_INTERVAL_MS = 30_000;

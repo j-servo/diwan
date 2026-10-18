@@ -1,0 +1,16 @@
+{
+  "stucco: numpy fields + colour": 1.94,
+  "stucco: numpy normal (comparison path)": 0.14,
+  "stucco: generate high-poly": 0.33,
+  "stucco: bake normal 2048x1024 (GPU)": 1.38,
+  "stucco: bake AO 2048x1024 @256spp (GPU)": 2.6,
+  "brick: numpy fields + colour": 0.83,
+  "brick: generate high-poly": 0.28,
+  "brick: bake normal 1024x1024 (GPU)": 0.48,
+  "brick: bake AO 1024x1024 @256spp (GPU)": 1.65,
+  "plaster + cedar: numpy-only maps": 0.36,
+  "stucco_high_tris": 691200,
+  "stucco_low_tris": 2,
+  "brick_high_tris": 583200,
+  "brick_low_tris": 2
+}

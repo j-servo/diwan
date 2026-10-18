@@ -8,6 +8,7 @@ import {
   BASH_COMMAND_DISPLAY_MAX_LENGTH,
   TASK_DESCRIPTION_DISPLAY_MAX_LENGTH,
 } from '../../../constants.js';
+import { finishDetail, redactSecrets } from '../../../toolDetail.js';
 import {
   areHooksInstalled as installerAreHooksInstalled,
   installHooks as installerInstallHooks,
@@ -35,7 +36,8 @@ export function formatToolStatus(toolName: string, input?: unknown): string {
     case 'Write':
       return `Writing ${base(inp.file_path)}`;
     case 'Bash': {
-      const cmd = (inp.command as string) || '';
+      // Redact before the cut, so the bubble never shows the start of a secret.
+      const cmd = redactSecrets((inp.command as string) || '');
       return `Running: ${cmd.length > BASH_COMMAND_DISPLAY_MAX_LENGTH ? cmd.slice(0, BASH_COMMAND_DISPLAY_MAX_LENGTH) + '\u2026' : cmd}`;
     }
     case 'Glob':
@@ -48,7 +50,7 @@ export function formatToolStatus(toolName: string, input?: unknown): string {
       return 'Searching the web';
     case 'Task':
     case 'Agent': {
-      const desc = typeof inp.description === 'string' ? inp.description : '';
+      const desc = redactSecrets(typeof inp.description === 'string' ? inp.description : '');
       return desc
         ? `Subtask: ${desc.length > TASK_DESCRIPTION_DISPLAY_MAX_LENGTH ? desc.slice(0, TASK_DESCRIPTION_DISPLAY_MAX_LENGTH) + '\u2026' : desc}`
         : 'Running subtask';
@@ -70,6 +72,70 @@ export function formatToolStatus(toolName: string, input?: unknown): string {
     default:
       return `Using ${toolName}`;
   }
+}
+
+// ── formatToolDetail: the fuller text behind a status line ──
+
+/** A path made relative to the session's project folder when it is inside it. */
+function relativeToCwd(p: unknown, cwd?: string): string {
+  if (typeof p !== 'string') return '';
+  if (!cwd) return p;
+  const rel = path.relative(cwd, p);
+  return rel && !rel.startsWith('..') && !path.isAbsolute(rel) ? rel : p;
+}
+
+function summarizeInput(inp: Record<string, unknown>): string {
+  const lines: string[] = [];
+  for (const [key, value] of Object.entries(inp)) {
+    if (value === undefined || value === null || value === '') continue;
+    const text = typeof value === 'string' ? value : JSON.stringify(value);
+    if (text) lines.push(`${key}: ${text.replace(/\s+/g, ' ')}`);
+  }
+  return lines.join('\n');
+}
+
+export function formatToolDetail(
+  toolName: string,
+  input?: unknown,
+  cwd?: string,
+): string | undefined {
+  const inp = (typeof input === 'object' && input !== null ? input : {}) as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === 'string' ? v : '');
+  let text: string;
+  switch (toolName) {
+    case 'Bash':
+      text = str(inp.command);
+      break;
+    case 'Read':
+    case 'Edit':
+    case 'Write':
+      text = relativeToCwd(inp.file_path, cwd);
+      break;
+    case 'NotebookEdit':
+      text = relativeToCwd(inp.notebook_path, cwd);
+      break;
+    case 'Grep':
+    case 'Glob': {
+      const where = relativeToCwd(inp.path, cwd);
+      text = where ? `${str(inp.pattern)} in ${where}` : str(inp.pattern);
+      break;
+    }
+    case 'WebFetch':
+      text = str(inp.url);
+      break;
+    case 'WebSearch':
+      text = str(inp.query);
+      break;
+    case 'Task':
+    case 'Agent': {
+      const firstLine = str(inp.prompt).trim().split('\n')[0] ?? '';
+      text = [str(inp.description), firstLine].filter(Boolean).join('\n');
+      break;
+    }
+    default:
+      text = summarizeInput(inp);
+  }
+  return finishDetail(text);
 }
 
 // ── Session dir + launch command ──
@@ -304,6 +370,7 @@ export const claudeProvider: HookProvider = {
   consentDisclosure,
 
   formatToolStatus,
+  formatToolDetail,
   permissionExemptTools: new Set(['Task', 'Agent', 'AskUserQuestion']),
   subagentToolNames: new Set(['Task', 'Agent']),
   readingTools: new Set(['Read', 'Grep', 'Glob', 'WebFetch', 'WebSearch']),

@@ -1,0 +1,971 @@
+/*
+ * Per-world variables. The page sets data-world on <html> (worlds/applyWorld.ts), which also sets
+ * --needs-you and --needs-you-ink inline from the world's signal. The House of Wisdom's values
+ * are the defaults; another world overrides only what differs, in its own block below.
+ */
+:root,
+:root[data-world='house-of-wisdom'] {
+  --parchment: #efe3c8;
+  --ink: #3b2a1a;
+  --needs-you: #2f5bea; /* cobalt glaze: only ever means "needs you" in this world (mirrors grammar/signal.ts) */
+  --needs-you-ink: #1d40b0;
+  --done-ink: #2f6b3e;
+  --glass: rgba(239, 227, 200, 0.62);
+  --glass-solid: #efe3c8;
+  --rule: rgba(122, 90, 48, 0.55);
+  --display: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Times New Roman', serif;
+}
+/* House of Life: its papyrus variables get their own :root[data-world='house-of-life'] block in E2. */
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: #15120e;
+  color: var(--ink);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+}
+.scene {
+  position: fixed !important;
+  inset: 0;
+}
+/* Parchment glass, shared by the message panel and bubbles (the HUD bar repeats it below). */
+.board-panel,
+.bubble {
+  border: 1px solid var(--rule);
+  background: var(--glass);
+  backdrop-filter: blur(10px) saturate(130%);
+  color: var(--ink);
+  box-shadow:
+    0 6px 18px rgba(30, 20, 8, 0.32),
+    inset 0 1px 0 rgba(255, 250, 235, 0.45);
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .board-panel,
+  .bubble {
+    background: var(--glass-solid);
+  }
+}
+.hud {
+  position: fixed;
+  top: 12px;
+  left: 16px;
+  max-width: calc(100vw - 32px);
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--ink);
+  pointer-events: none;
+  /* the bar and its dropdowns are glass; the wrapper itself is not */
+  border: 0;
+  background: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+.hud-bar,
+.hud-legend,
+.hud-empty {
+  border: 1px solid var(--rule);
+  background: var(--glass);
+  backdrop-filter: blur(10px) saturate(130%);
+  box-shadow:
+    0 6px 18px rgba(30, 20, 8, 0.32),
+    inset 0 1px 0 rgba(255, 250, 235, 0.45);
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .hud-bar,
+  .hud-legend,
+  .hud-empty {
+    background: var(--glass-solid);
+  }
+}
+.hud-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 4px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.hud-brand {
+  font-family: var(--display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.hud-brand span {
+  font-weight: 400;
+  opacity: 0.7;
+}
+.hud-where {
+  opacity: 0.75;
+}
+.hud-alert {
+  color: var(--needs-you-ink);
+}
+.hud-drop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: 100%;
+}
+.hud-legend,
+.hud-empty {
+  box-sizing: border-box;
+  margin: 0;
+  border-radius: 10px;
+}
+.hud-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  width: max-content;
+  max-width: 100%;
+  padding: 8px 12px;
+  list-style: none;
+}
+.hud-legend i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 5px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(59, 42, 26, 0.35);
+}
+.hud-empty {
+  width: max-content;
+  max-width: 100%;
+  padding: 6px 12px;
+  font-family: var(--display);
+  font-style: italic;
+  white-space: normal;
+}
+.hud-empty a {
+  color: var(--needs-you-ink);
+  pointer-events: auto;
+}
+.hud-mood {
+  display: flex;
+  gap: 4px;
+  pointer-events: auto;
+}
+.hud-mood button {
+  padding: 2px 9px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.hud-world {
+  pointer-events: auto; /* the bar lets clicks through to the canvas; the control must take them */
+  field-sizing: content; /* as wide as the chosen world's name, not the longest */
+  padding: 0 2px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.hud-world:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+.hud-mood button[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--parchment);
+}
+.hud-mood button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+/* Keep clear of the message panel (300px + 16px gutters on the right) as the window narrows. */
+@media (max-width: 1240px) {
+  .hud-where:not(:has(.hud-world)) {
+    display: none;
+  }
+  .hud-where-text {
+    display: none;
+  }
+}
+@media (max-width: 960px) {
+  .hud-brand span {
+    display: none;
+  }
+  .hud-bar {
+    border-radius: 18px;
+  }
+}
+/* Speech bubble + name tag (spec §4). Parchment glass, calligraphic border, small tail. */
+.agent-tag {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+.bubble {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: max-content; /* Html shrink-wraps its box; without this the clamp wraps per letter */
+  max-width: 190px;
+  padding: 5px 10px;
+  border-width: 1px 1px 2px 1px; /* a pen-weight underline */
+  border-radius: 11px 11px 11px 3px;
+  font-family: var(--display);
+  font-size: 12px;
+  font-style: italic;
+  line-height: 1.25;
+  animation: bubble-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border-right: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  background: inherit;
+  transform: translateX(-50%) rotate(45deg);
+}
+.bubble:not(.bubble--approval):not(.bubble--waiting) {
+  /* working: the tool-kind colour (set inline as --kind from KIND_COLORS) borders the bubble */
+  border: 2px solid var(--kind, var(--rule));
+  box-shadow:
+    0 0 6px color-mix(in srgb, var(--kind, transparent) 40%, transparent),
+    0 4px 12px rgba(30, 20, 8, 0.32),
+    inset 0 1px 0 rgba(255, 250, 235, 0.45);
+}
+.bubble:not(.bubble--approval):not(.bubble--waiting)::after {
+  border-right: 2px solid var(--kind, var(--rule));
+  border-bottom: 2px solid var(--kind, var(--rule));
+}
+.bubble-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.bubble--approval {
+  /* categorically unlike a tool bubble: opaque cobalt glaze, parchment ink, a wax-seal glyph,
+     and 1.3x the size of a working bubble */
+  border-color: var(--needs-you-ink);
+  background: var(--needs-you);
+  backdrop-filter: none;
+  color: var(--parchment);
+  font-weight: 600;
+  scale: 1.3;
+  transform-origin: 50% 100%;
+  animation:
+    bubble-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    bubble-pulse 1.6s ease-out infinite;
+}
+.bubble--approval::before {
+  content: '\2726';
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border: 1px solid var(--parchment);
+  border-radius: 50%;
+  font-size: 9px;
+  font-style: normal;
+  line-height: 1;
+}
+.bubble--approval::after {
+  background: var(--needs-you);
+  border-color: var(--needs-you-ink);
+}
+.bubble--waiting {
+  color: var(--done-ink);
+}
+.bubble-dots {
+  display: inline-flex;
+  gap: 2px;
+}
+.bubble-dots i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.35;
+  animation: bubble-dot 1.2s ease-in-out infinite;
+}
+.bubble-dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.bubble-dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+/* One compact line: the persona, then the session label in a lighter weight. */
+.agent-name {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(59, 42, 26, 0.72);
+  color: var(--parchment);
+  font-family: var(--display);
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-align: center;
+}
+.agent-title {
+  font-weight: 600;
+}
+.agent-detail {
+  font-family: var(--body, inherit);
+  font-weight: 400;
+  opacity: 0.75;
+}
+.agent-tag--compact {
+  gap: 3px;
+}
+.agent-tag--compact .agent-name {
+  padding: 1px 5px;
+  font-size: 8.5px;
+}
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes bubble-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+@keyframes bubble-pulse {
+  0% {
+    box-shadow:
+      0 0 0 0 color-mix(in srgb, var(--needs-you) 60%, transparent),
+      0 4px 12px rgba(30, 20, 8, 0.32);
+  }
+  100% {
+    box-shadow:
+      0 0 0 9px color-mix(in srgb, var(--needs-you) 0%, transparent),
+      0 4px 12px rgba(30, 20, 8, 0.32);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bubble,
+  .bubble--approval,
+  .bubble-dots i {
+    animation: none;
+  }
+}
+.board-panel {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 300px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 12.5px;
+}
+.board-panel h2 {
+  margin: 0 0 8px;
+  font-family: var(--display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.board-panel ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.board-entry {
+  display: flex;
+  gap: 10px;
+  padding: 5px 0;
+  border-top: 1px solid rgba(122, 90, 48, 0.25);
+  animation: bubble-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.board-entry time {
+  white-space: nowrap;
+  flex: none;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+.board-entry--approval {
+  color: var(--needs-you-ink);
+  font-weight: 600;
+}
+.board-entry--done {
+  color: var(--done-ink);
+}
+.board-empty {
+  margin: 0;
+  opacity: 0.65;
+}
+
+/* Inspect card: what a figure is doing and what it wants from you. Read-only. Cobalt is only the
+   approval block (colour law); everything else is parchment and ink. */
+.inspect-card {
+  --ic-muted: #5a4730;
+  position: fixed;
+  top: 64px;
+  right: 16px;
+  z-index: 30;
+  box-sizing: border-box;
+  width: 320px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: rgba(239, 227, 200, 0.95);
+  color: var(--ink);
+  font-size: 12.5px;
+  line-height: 1.35;
+  box-shadow:
+    0 6px 18px rgba(30, 20, 8, 0.32),
+    inset 0 1px 0 rgba(255, 250, 235, 0.45);
+  animation: bubble-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* The card takes the message board's place while it is open: both live at the right edge. */
+body:has(.inspect-card) .board-panel {
+  display: none;
+}
+.ic-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.inspect-card h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.inspect-card h2 span {
+  font-weight: 400;
+}
+.inspect-card h3 {
+  margin: 12px 0 4px;
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ic-muted);
+}
+.inspect-card p {
+  margin: 0;
+}
+.ic-folder,
+.ic-parent {
+  margin-top: 2px !important;
+  color: var(--ic-muted);
+}
+.ic-state {
+  margin-top: 6px !important;
+  font-weight: 600;
+}
+.ic-close {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+.ic-close:hover {
+  background: var(--ink);
+  color: var(--parchment);
+}
+.ic-close:focus-visible,
+.ic-link:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+.ic-now,
+.ic-recent,
+.ic-apprentices {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ic-tool + .ic-tool {
+  margin-top: 6px;
+}
+.ic-detail {
+  margin: 2px 0 0;
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: rgba(59, 42, 26, 0.08);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ic-recent li,
+.ic-apprentices li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 0;
+  border-top: 1px solid rgba(122, 90, 48, 0.25);
+}
+.ic-recent time,
+.ic-apprentices span {
+  flex: none;
+  max-width: 55%;
+  color: var(--ic-muted);
+  text-align: right;
+}
+.ic-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.ic-link:disabled {
+  text-decoration: none;
+  cursor: default;
+}
+.ic-needs {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-left: 4px solid var(--needs-you);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--needs-you) 10%, transparent);
+}
+.ic-needs h3 {
+  margin: 0 0 4px;
+  color: var(--needs-you-ink);
+}
+.ic-needs .ic-detail {
+  background: rgba(255, 250, 235, 0.7);
+}
+.ic-terminal {
+  margin-top: 6px !important;
+  font-weight: 600;
+}
+/* Hover peek: one line near the pointer. */
+.peek {
+  position: fixed;
+  z-index: 40;
+  max-width: 420px;
+  padding: 3px 9px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: rgba(239, 227, 200, 0.96);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 3px 10px rgba(30, 20, 8, 0.3);
+}
+.hud-needs {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.hud-needs:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+/* Narrow screens: the card is a bottom sheet. */
+@media (max-width: 720px) {
+  .inspect-card {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    max-height: 55vh;
+    border-radius: 14px 14px 0 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .inspect-card {
+    animation: none;
+  }
+}
+
+/* Steer mode (diwan --steer): launch dialog and the controls on a launched scholar's card.
+   Parchment and ink only; the one cobalt is the existing approval block. Approve is the green
+   done-ink, Stop a madder red: neither is within 25 degrees of the glaze. */
+.hud-new {
+  padding: 3px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--glass-solid);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.hud-new:focus-visible,
+.ic-btn:focus-visible,
+.dlg select:focus-visible,
+.dlg textarea:focus-visible,
+.dlg input:focus-visible,
+.ic-follow textarea:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.ic-btn {
+  padding: 5px 12px;
+  border: 1px solid var(--ink);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ic-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.ic-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.ic-spend {
+  font-variant-numeric: tabular-nums;
+}
+.ic-model {
+  margin: 0 0 2px;
+  color: var(--ic-muted);
+}
+.ic-bar {
+  height: 4px;
+  margin-top: 4px;
+  border-radius: 2px;
+  background: #e4d9c3;
+  overflow: hidden;
+}
+.ic-bar-fill {
+  height: 100%;
+  background: #a89677;
+}
+.ic-bar-warn .ic-bar-fill {
+  background: #c27b1a;
+}
+
+.ic-stopped {
+  margin-top: 4px !important;
+  font-weight: 700;
+}
+.ic-follow {
+  display: block;
+  margin-top: 8px;
+}
+.ic-follow span,
+.dlg label > span {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ic-muted, #5a4730);
+}
+.ic-follow textarea,
+.dlg textarea,
+.dlg select,
+.dlg input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 5px 7px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: rgba(255, 250, 235, 0.8);
+  color: var(--ink);
+  font: inherit;
+}
+.ic-follow textarea,
+.dlg textarea {
+  resize: vertical;
+}
+.ic-stop {
+  border-color: #8a2b1f;
+  color: #8a2b1f;
+}
+.ic-confirm {
+  margin-top: 8px;
+  padding: 6px 8px;
+  border: 1px solid #8a2b1f;
+  border-radius: 6px;
+}
+/* A pending request fixes the card's height, so the buttons below never move as its text changes. */
+.inspect-card--asking {
+  display: flex;
+  flex-direction: column;
+  height: min(560px, calc(100vh - 80px));
+}
+.inspect-card--asking .ic-actions {
+  margin-top: auto; /* pinned to the card's foot: the text above never moves them */
+}
+/* Warnings about what Approve would run use a warm danger colour, never the cobalt of "needs you". */
+.ic-warnings {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ic-warn {
+  margin-top: 4px !important;
+  font-weight: 700;
+  color: #9a3a0c;
+}
+.ic-warn::before {
+  content: '! ';
+}
+.ic-size,
+.ic-extras {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--ic-muted);
+}
+.ic-danger {
+  color: #9a3a0c;
+  font-weight: 700;
+}
+.ic-ask-detail {
+  max-height: 16em;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ic-end {
+  display: inline-block;
+  width: 1px;
+  height: 1px;
+}
+.ic-more {
+  margin-top: 4px !important;
+  color: var(--ic-muted);
+}
+.ic-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  gap: 10px;
+  margin: 10px -14px -14px;
+  padding: 10px 14px 14px;
+  border-top: 1px solid var(--rule);
+  background: rgba(239, 227, 200, 0.98);
+}
+.ic-actions .ic-btn {
+  flex: 1;
+  padding: 8px 12px;
+}
+.ic-deny {
+  background: var(--ink);
+  color: var(--parchment);
+}
+.ic-approve {
+  border-color: var(--done-ink);
+  color: var(--done-ink);
+}
+.dlg-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: rgba(21, 18, 14, 0.55);
+}
+.dlg {
+  box-sizing: border-box;
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding: 16px 18px 18px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--glass-solid);
+  color: var(--ink);
+  font-size: 13px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+.dlg h2 {
+  margin: 0 0 10px;
+  font-family: var(--display);
+  font-size: 17px;
+}
+.dlg label {
+  display: block;
+  margin-top: 10px;
+}
+.dlg small {
+  display: block;
+  margin-top: 2px;
+  color: #5a4730;
+}
+.dlg-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.dlg-hint,
+.dlg-error {
+  margin: 8px 0 0;
+}
+.dlg-error {
+  font-weight: 700;
+  color: #8a2b1f;
+}
+.dlg-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+.ic-go {
+  background: var(--ink);
+  color: var(--parchment);
+}
+
+/* Answer ready: a warm parchment scroll in the hall, a warm line on the card, a warm count in the HUD. Never cobalt. */
+.answer-scroll {
+  display: block;
+  animation: bubble-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  filter: drop-shadow(0 1px 1px rgba(59, 42, 26, 0.35));
+}
+.hud-answer {
+  font: inherit;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: #8a5a14;
+  font-weight: 700;
+  text-decoration: underline;
+  pointer-events: auto;
+}
+.hud-answer:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.ic-turn {
+  margin: 0 0 2px;
+  font-weight: 700;
+  color: #8a5a14;
+}
+.ic-turn--error {
+  color: #8a2b1f;
+}
+.ic-convo {
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 6px 0;
+  padding: 6px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: rgba(255, 250, 235, 0.55);
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.ic-msg {
+  margin: 0 0 8px;
+}
+.ic-msg--user {
+  padding-left: 8px;
+  border-left: 3px solid #c9a96a;
+}
+.ic-who {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #7a5a30;
+}
+.ic-plain,
+.ic-msg .md p {
+  margin: 0 0 6px;
+  white-space: pre-wrap;
+}
+.ic-msg .md :is(h3, h4, h5, h6) {
+  margin: 6px 0 2px;
+  font-size: 13px;
+}
+.ic-msg .md :is(ul, ol) {
+  margin: 0 0 6px;
+  padding-left: 18px;
+}
+.ic-msg .md pre {
+  margin: 0 0 6px;
+  padding: 6px;
+  overflow-x: auto;
+  background: rgba(59, 42, 26, 0.08);
+  border-radius: 4px;
+  font-size: 12px;
+}
+.ic-msg .md code {
+  font-size: 12px;
+}
+.ic-msg .md blockquote {
+  margin: 0 0 6px;
+  padding-left: 8px;
+  border-left: 3px solid var(--rule);
+}
+.ic-msg .md a {
+  color: #8a5a14;
+}
+.ic-step {
+  margin: 0 0 4px;
+  color: var(--ic-muted);
+  font-size: 12px;
+  font-family: ui-monospace, Menlo, monospace;
+}

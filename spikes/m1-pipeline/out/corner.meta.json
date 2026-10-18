@@ -1,0 +1,63 @@
+{
+  "note": "THROWAWAY SPIKE OUTPUT (M1 pipeline spike). three.js coordinates, metres.",
+  "lightmap": {
+    "file": "lightmap_golden",
+    "uv": 1,
+    "intensity": 3.997849610648395,
+    "colorSpace": "srgb"
+  },
+  "sun": {
+    "color": [
+      1.0,
+      0.74,
+      0.46
+    ],
+    "intensity": 3.8821169218100664,
+    "position": [
+      2.4220157813763095,
+      5.796725658119236,
+      -4.361577862357725
+    ],
+    "target": [
+      0.32599473954123015,
+      0.6544247806269214,
+      1.3971926207859084
+    ],
+    "angle": 0.09272951731726856,
+    "near": 0.5,
+    "far": 12.0,
+    "size": 1024,
+    "gobo": "gobo_window.png"
+  },
+  "lamp": {
+    "position": [
+      -0.55,
+      1.84,
+      -0.17
+    ],
+    "color": [
+      0.16,
+      0.82,
+      0.8
+    ]
+  },
+  "window": {
+    "center": [
+      0.85,
+      1.9,
+      -0.75
+    ],
+    "size": [
+      1.0,
+      1.6
+    ]
+  },
+  "sky": {
+    "color": [
+      0.95,
+      0.74,
+      0.52
+    ],
+    "strength": 1.0
+  }
+}

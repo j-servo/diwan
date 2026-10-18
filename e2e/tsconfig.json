@@ -10,6 +10,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "esModuleInterop": true,
+    "skipLibCheck": true,
     "sourceMap": true,
     "outDir": "../dist/e2e",
     "rootDir": ".",

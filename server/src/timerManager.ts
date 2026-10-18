@@ -19,6 +19,7 @@ export function clearAgentActivity(
       if (agent.backgroundAgentToolIds.has(toolId)) continue;
       agent.activeToolIds.delete(toolId);
       agent.activeToolStatuses.delete(toolId);
+      agent.activeToolDetails?.delete(toolId);
       agent.activeToolNames.delete(toolId);
       agent.activeSubagentToolIds.delete(toolId);
       agent.activeSubagentToolNames.delete(toolId);
@@ -26,6 +27,7 @@ export function clearAgentActivity(
   } else {
     agent.activeToolIds.clear();
     agent.activeToolStatuses.clear();
+    agent.activeToolDetails?.clear();
     agent.activeToolNames.clear();
     agent.activeSubagentToolIds.clear();
     agent.activeSubagentToolNames.clear();
@@ -49,6 +51,7 @@ export function clearAgentActivity(
         id: agentId,
         toolId,
         status,
+        detail: agent.activeToolDetails?.get(toolId),
         toolName: agent.activeToolNames.get(toolId),
         runInBackground: true,
         isTeammateSpawn: agent.teammateSpawnToolIds?.has(toolId) || undefined,

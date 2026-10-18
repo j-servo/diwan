@@ -448,6 +448,7 @@ export class HookEventHandler {
         id: agentId,
         toolId: hookToolId,
         status,
+        detail: this.provider.formatToolDetail?.(toolName, toolInput, agent.cwd),
         toolName,
       });
     }
@@ -731,6 +732,7 @@ export class HookEventHandler {
       if (agent.backgroundAgentToolIds.has(toolId)) continue;
       agent.activeToolIds.delete(toolId);
       agent.activeToolStatuses.delete(toolId);
+      agent.activeToolDetails?.delete(toolId);
       const toolName = agent.activeToolNames.get(toolId);
       agent.activeToolNames.delete(toolId);
       if (toolName && parentTools.has(toolName)) {
@@ -756,6 +758,7 @@ export class HookEventHandler {
           id: agentId,
           toolId,
           status,
+          detail: agent.activeToolDetails?.get(toolId),
           toolName: agent.activeToolNames.get(toolId),
           runInBackground: true,
           isTeammateSpawn: agent.teammateSpawnToolIds?.has(toolId) || undefined,

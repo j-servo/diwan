@@ -96,6 +96,10 @@ export interface HookProvider {
 
   /** Format tool status for display (e.g., "Read" -> "Reading foo.ts") */
   formatToolStatus(toolName: string, input?: unknown): string;
+  /** The fuller action text for a tool call (whole Bash command, file path, URL, ...), already redacted and
+   *  capped; shown beside the status in read-only clients. `cwd` is the session's project folder, used to
+   *  shorten paths. Undefined when there is nothing more to say. */
+  formatToolDetail?(toolName: string, input?: unknown, cwd?: string): string | undefined;
   /** Tools that don't trigger permission timers */
   readonly permissionExemptTools: ReadonlySet<string>;
   /** Tools that spawn sub-agent characters */

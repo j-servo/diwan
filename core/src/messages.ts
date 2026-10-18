@@ -13,6 +13,7 @@ export type ServerMessage =
   | AgentClosed
   | AgentSelected
   | ExistingAgents
+  | AgentLabel
   | AgentStatus
   | AgentToolStart
   | AgentToolDone
@@ -38,9 +39,21 @@ export type ServerMessage =
   | ExternalAssetDirectoriesUpdated
   | AreaMappingsLoaded
   | WorkspaceFolders
-  | AgentDiagnostics;
+  | AgentDiagnostics
+  | SteerWelcome
+  | SteerAgent
+  | SteerApproval
+  | SteerApprovalClear
+  | SteerReply
+  | SteerResult;
 
 export type ClientMessage =
+  | SteerHello
+  | SteerLaunch
+  | SteerAnswer
+  | SteerFollowUp
+  | SteerInterrupt
+  | SteerStop
   | WebviewReady
   | LaunchAgent
   | FocusAgent
@@ -77,6 +90,7 @@ export interface AgentCreated {
   isExternal?: boolean;
   palette?: number;
   hueShift?: number;
+  steerable?: boolean;
 }
 
 export interface AgentClosed {
@@ -103,6 +117,12 @@ export interface AgentSeatMeta {
   seatId?: string;
 }
 
+export interface AgentLabel {
+  type: 'agentLabel';
+  id: number;
+  label: string;
+}
+
 export interface AgentStatus {
   type: 'agentStatus';
   id: number;
@@ -117,6 +137,7 @@ export interface AgentToolStart {
   id: number;
   toolId: string;
   status: string;
+  detail?: string;
   toolName?: string;
   permissionActive?: boolean;
   runInBackground?: boolean;
@@ -150,6 +171,7 @@ export interface SubagentToolStart {
   parentToolId: string;
   toolId: string;
   status: string;
+  detail?: string;
 }
 
 export interface SubagentToolDone {
@@ -313,6 +335,114 @@ export interface WorkspaceFolder {
 export interface AgentDiagnostics {
   type: 'agentDiagnostics';
   agents: Record<string, any>[];
+}
+
+export interface SteerWelcome {
+  type: 'steerWelcome';
+  projects: SteerProject[];
+}
+
+export interface SteerProject {
+  path: string;
+  name: string;
+}
+
+export interface SteerAgent {
+  type: 'steerAgent';
+  id: number;
+  steerable: boolean;
+  running: boolean;
+  model: string;
+  effort: string;
+  tokensUsed: number;
+  tokenCap: number;
+  turn: string;
+  answerSeq: number;
+  turnError?: string;
+  stopped?: string;
+}
+
+export interface SteerApproval {
+  type: 'steerApproval';
+  id: number;
+  requestId: string;
+  tool: string;
+  detail: string;
+  truncated?: boolean;
+  masked?: number;
+  hidden?: boolean;
+  lines?: number;
+  chars?: number;
+  extras?: SteerApprovalExtra[];
+}
+
+export interface SteerApprovalExtra {
+  name: string;
+  value: string;
+  warn?: boolean;
+}
+
+export interface SteerApprovalClear {
+  type: 'steerApprovalClear';
+  id: number;
+  requestId: string;
+  outcome: SteerOutcome;
+}
+
+export type SteerOutcome = 'approved' | 'denied' | 'timeout' | 'stopped' | 'shutdown' | 'budget';
+
+export interface SteerReply {
+  type: 'steerReply';
+  id: number;
+  seq: number;
+  role: string;
+  text: string;
+  at: number;
+  truncated?: boolean;
+}
+
+export interface SteerResult {
+  type: 'steerResult';
+  ok: boolean;
+  ref?: string;
+  error?: string;
+}
+
+export interface SteerHello {
+  type: 'steerHello';
+  token: string;
+}
+
+export interface SteerLaunch {
+  type: 'steerLaunch';
+  ref?: string;
+  project: string;
+  task: string;
+  model: string;
+  effort: string;
+  tokenBudget: number;
+}
+
+export interface SteerAnswer {
+  type: 'steerAnswer';
+  requestId: string;
+  allow: boolean;
+}
+
+export interface SteerFollowUp {
+  type: 'steerFollowUp';
+  id: number;
+  text: string;
+}
+
+export interface SteerInterrupt {
+  type: 'steerInterrupt';
+  id: number;
+}
+
+export interface SteerStop {
+  type: 'steerStop';
+  id: number;
 }
 
 export interface WebviewReady {

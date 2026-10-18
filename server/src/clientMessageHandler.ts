@@ -60,7 +60,15 @@ export interface ClientMessageContext {
    * to false so a caller that forgets to pass it gets the safe answer.
    */
   privileged?: boolean;
+  /**
+   * Diwan's hall only watches: nothing a client sends may write config, layout, seats
+   * or settings.json. Only the messages in READ_ONLY_MESSAGES get through.
+   */
+  readOnly?: boolean;
 }
+
+/** The only client messages a read-only (Diwan) connection may send. */
+const READ_ONLY_MESSAGES: ReadonlySet<unknown> = new Set(['webviewReady', 'requestDiagnostics']);
 
 // ── Setting key constants (mirror adapters/vscode/constants.ts) ──
 const KEY_SOUND_ENABLED = 'pixel-agents.soundEnabled';
@@ -85,6 +93,8 @@ export function handleClientMessage(
 ): void {
   const { store, runtime, cache } = ctx;
   const adapter = store.getAdapter();
+
+  if (ctx.readOnly && !READ_ONLY_MESSAGES.has(msg.type)) return;
 
   switch (msg.type) {
     case 'webviewReady':
@@ -469,7 +479,8 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
 
   // Sync runtime refs with the persisted settings so scanners behave correctly
   // from the first tick after a server restart.
-  if (runtime) {
+  // Read-only (Diwan): the CLI owns these refs (watch everything; hooks follow settings.json).
+  if (runtime && !ctx.readOnly) {
     runtime.watchAllSessions.current = watchAllSessions;
     runtime.hooksEnabled.current = hooksEnabled;
   }

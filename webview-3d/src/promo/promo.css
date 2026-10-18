@@ -1,0 +1,65 @@
+/* The promo render: nothing but the canvas, the captions and the end card. */
+html.promo #root > :not(.scene):not(.promo-layer),
+html.promo .agent-tag,
+html.promo .bubble {
+  display: none !important;
+}
+.promo-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  font-family: var(--display);
+  color: var(--parchment);
+}
+.promo-caption {
+  position: absolute;
+  left: 50%;
+  bottom: 7%;
+  width: max-content;
+  max-width: 82%;
+  translate: -50% 0;
+  padding: 0.55em 1.3em;
+  border-radius: 999px;
+  background: rgba(21, 18, 14, 0.5);
+  backdrop-filter: blur(6px);
+  font-size: clamp(18px, 3vh, 40px);
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+}
+.promo-card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.6vh;
+  text-align: center;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(21, 18, 14, 0.55) 0%,
+    rgba(21, 18, 14, 0.9) 100%
+  );
+}
+.promo-mark {
+  height: 9vh;
+  margin-bottom: 1vh;
+}
+.promo-title {
+  font-size: 9vh;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.promo-tagline {
+  max-width: 80%;
+  font-size: 2.6vh;
+  font-style: italic;
+  opacity: 0.85;
+}
+.promo-brand {
+  margin-top: 2vh;
+  font-size: 2vh;
+  letter-spacing: 0.4em;
+  opacity: 0.7;
+}

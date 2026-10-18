@@ -484,6 +484,25 @@ describe('HookEventHandler', () => {
     expect(agent.currentHookToolId).toBeTruthy();
   });
 
+  it('PreToolUse carries the whole redacted Bash command as detail while status stays short', () => {
+    const agent = createTestAgent({ id: 1, isWaiting: true, cwd: '/p/app' });
+    agents.set(1, agent);
+    handler.registerAgent('sess-1', 1);
+
+    handler.handleEvent('claude', {
+      hook_event_name: 'PreToolUse',
+      session_id: 'sess-1',
+      tool_name: 'Bash',
+      tool_input: { command: 'npm run deploy:staging --token=abcd1234 && echo finished' },
+    });
+
+    const toolMsg = mockWebview.messages.find((m) => m.type === 'agentToolStart');
+    expect(String(toolMsg?.status).length).toBeLessThanOrEqual(40);
+    expect(toolMsg?.detail).toBe(
+      'npm run deploy:staging --token=\u2022\u2022\u2022 && echo finished',
+    );
+  });
+
   it('PreToolUse marks agent active and cancels waiting', () => {
     const agent = createTestAgent({ id: 1, isWaiting: true });
     agents.set(1, agent);

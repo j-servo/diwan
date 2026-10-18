@@ -119,7 +119,9 @@ export async function finishNarration(window: Page): Promise<void> {
     // recorded Electron window. Frame-based, not an arbitrary timer.
     await window.evaluate(
       () =>
-        new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
     );
   } catch (error) {
     console.warn(

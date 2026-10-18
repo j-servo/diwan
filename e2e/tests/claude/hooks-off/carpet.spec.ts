@@ -249,7 +249,8 @@ test.describe('Carpet', () => {
     const freshFrame = await getPixelAgentsFrame(window);
     await freshFrame.waitForFunction(
       () =>
-        ((window as TestHooksWindow).__pixelAgentsTestHooks?.getCarpetTiles?.() ?? []).length === 2,
+        ((globalThis.window as TestHooksWindow).__pixelAgentsTestHooks?.getCarpetTiles?.() ?? [])
+          .length === 2,
       undefined,
       { timeout: 15_000 },
     );

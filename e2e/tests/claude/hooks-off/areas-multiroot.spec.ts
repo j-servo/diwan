@@ -183,9 +183,9 @@ test.describe('Areas (multi-root)', () => {
       narrator.step('expecting the restored alpha agent to re-seat inside Engineering');
       await fresh.waitForFunction(
         (folder) =>
-          ((window as TestHooksWindow).__pixelAgentsTestHooks?.getAgentSeats?.() ?? []).some(
-            (a) => a.folderName === folder && a.seatId !== null,
-          ),
+          (
+            (globalThis.window as TestHooksWindow).__pixelAgentsTestHooks?.getAgentSeats?.() ?? []
+          ).some((a) => a.folderName === folder && a.seatId !== null),
         ALPHA,
         { timeout: 20_000 },
       );
@@ -213,9 +213,9 @@ test.describe('Areas (multi-root)', () => {
       narrator.step('expecting the unmapped beta agent to land on an unzoned seat');
       await fresh.waitForFunction(
         (folder) =>
-          ((window as TestHooksWindow).__pixelAgentsTestHooks?.getAgentSeats?.() ?? []).some(
-            (a) => a.folderName === folder && a.seatId !== null,
-          ),
+          (
+            (globalThis.window as TestHooksWindow).__pixelAgentsTestHooks?.getAgentSeats?.() ?? []
+          ).some((a) => a.folderName === folder && a.seatId !== null),
         BETA,
         { timeout: 20_000 },
       );

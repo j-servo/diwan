@@ -1,0 +1,44 @@
+{
+  "name": "webview-3d",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "preview": "vite preview",
+    "e2e": "playwright test",
+    "assets:layout": "tsx scripts/export-layout.ts ${DIWAN_WORLD:-house-of-wisdom}",
+    "assets:bake": "sh -c 'export DIWAN_WORLD=${DIWAN_WORLD:-house-of-wisdom}; B=\"${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}\"; if [ \"$DIWAN_WORLD\" = house-of-life ]; then node assets/render-hieroglyphs.mjs && \"$B\" -b --factory-startup --python-exit-code 1 --python assets/blender/temple.py -- \"$@\"; else node assets/render-glyphs.mjs && \"$B\" -b --factory-startup --python-exit-code 1 --python assets/blender/trim_bake.py -- \"$@\" && \"$B\" -b --factory-startup --python-exit-code 1 --python assets/blender/armillary.py && \"$B\" -b --factory-startup --python-exit-code 1 --python assets/blender/hall.py -- \"$@\"; fi' --",
+    "assets:figures": "sh -c 'B=\"${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}\"; O=assets/worlds/house-of-life/out; if [ \"${DIWAN_WORLD:-house-of-wisdom}\" = house-of-life ]; then \"$B\" -b --factory-startup --python-exit-code 1 --python assets/blender/figures.py -- --world egypt \"$@\" && mkdir -p $O/figures && node assets/figures/optimize-figures.mjs $O/raw/figures-egypt.raw.glb $O/figures/figures-egypt.glb; else \"$B\" -b --factory-startup --python-exit-code 1 --python assets/blender/figures.py -- \"$@\" && node assets/figures/optimize-figures.mjs; fi' --",
+    "assets:optimize": "sh -c 'O=assets/worlds/${DIWAN_WORLD:-house-of-wisdom}/out; export DIWAN_WORLD=${DIWAN_WORLD:-house-of-wisdom}; if [ \"$DIWAN_WORLD\" = house-of-life ]; then C=pyramid; else C=armillary; fi; node assets/optimize.mjs $O/raw/hall.raw.glb $O/hall.glb && node assets/optimize.mjs $O/raw/$C.raw.glb $O/$C.glb && node assets/optimize.mjs --lightmap $O/raw/lightmap_golden.png $O/lightmap_golden.ktx2 && node assets/optimize.mjs --lightmap $O/raw/lightmap_dusk.png $O/lightmap_dusk.ktx2'",
+    "assets": "npm run assets:layout && npm run assets:bake && npm run assets:optimize",
+    "frames": "DIWAN_FRAMES=1 playwright test",
+    "perf": "node scripts/perf.mjs",
+    "promo": "tsx scripts/promo.mjs"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
+    "@react-three/postprocessing": "^3.2.0",
+    "postprocessing": "^6.39.5",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "@gltf-transform/cli": "^4.5.1",
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.185.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "meshoptimizer": "^1.3.0",
+    "typescript": "~5.9.3",
+    "vite": "^8.0.8",
+    "vitest": "^4.1.10"
+  }
+}

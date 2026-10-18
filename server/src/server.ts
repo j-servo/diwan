@@ -6,17 +6,14 @@ import * as path from 'path';
 
 import type { AgentRuntime } from './agentRuntime.js';
 import type { AgentStateStore } from './agentStateStore.js';
+import { getBrand } from './brand.js';
 import type {
   AssetCache,
   ReloadAssetsSideEffect,
   SetHooksEnabledSideEffect,
 } from './clientMessageHandler.js';
-import {
-  SERVER_JSON_DIR,
-  SERVER_JSON_NAME,
-  SERVER_REGISTRY_PROTOCOL_VERSION,
-  SERVERS_DIR,
-} from './constants.js';
+import { SERVER_JSON_NAME, SERVER_REGISTRY_PROTOCOL_VERSION, SERVERS_DIR } from './constants.js';
+import type { HttpServerOptions } from './httpServer.js';
 import { createHttpServer } from './httpServer.js';
 import type { ServerConfig } from './serverConfig.js';
 import { isServerConfig, isServerTarget } from './serverConfig.js';
@@ -66,6 +63,10 @@ export class PixelAgentsServer {
     host?: string;
     port?: number;
     staticDir?: string;
+    /** Diwan: accept only read-only client messages, quiet request logging. */
+    readOnly?: boolean;
+    /** Diwan `--steer`: see HttpServerOptions.steer. */
+    steer?: HttpServerOptions['steer'];
     assetCache?: AssetCache;
     onSetHooksEnabled?: SetHooksEnabledSideEffect;
     onReloadAssets?: ReloadAssetsSideEffect;
@@ -102,6 +103,8 @@ export class PixelAgentsServer {
       store: store!,
       runtime: options?.runtime,
       staticDir: options?.staticDir,
+      readOnly: options?.readOnly,
+      steer: options?.steer,
       assetCache: options?.assetCache,
       onHookEvent: (providerId, event) => this.callback?.(providerId, event),
       onSetHooksEnabled: options?.onSetHooksEnabled,
@@ -132,18 +135,18 @@ export class PixelAgentsServer {
     return this.config;
   }
 
-  /** Stop the server and clean up its discovery records (only if we own them). */
-  stop(): void {
-    if (this.app) {
-      this.app.close();
-      this.app = null;
-    }
+  /** Stop the server and clean up its discovery records (only if we own them).
+   *  Resolves once the listener is closed; callers that exit right away may ignore it. */
+  stop(): Promise<void> {
+    const app = this.app;
+    this.app = null;
     if (this.ownsServer) {
       this.deleteServerJson();
       this.deleteRegistryEntry();
     }
     this.config = null;
     this.ownsServer = false;
+    return app ? app.close() : Promise.resolve();
   }
 
   /** Returns the current server config, or null if not started. */
@@ -153,7 +156,7 @@ export class PixelAgentsServer {
 
   /** Returns the absolute path to ~/.pixel-agents/server.json. */
   private getServerJsonPath(): string {
-    return path.join(os.homedir(), SERVER_JSON_DIR, SERVER_JSON_NAME);
+    return path.join(os.homedir(), getBrand().dirName, SERVER_JSON_NAME);
   }
 
   /** Write server.json atomically (tmp + rename) with mode 0o600. */
@@ -200,7 +203,7 @@ export class PixelAgentsServer {
 
   /** Returns the absolute path to ~/.pixel-agents/servers/. */
   private getRegistryDir(): string {
-    return path.join(os.homedir(), SERVER_JSON_DIR, SERVERS_DIR);
+    return path.join(os.homedir(), getBrand().dirName, SERVERS_DIR);
   }
 
   /** Returns the absolute path to this config's registry entry file. Keyed on

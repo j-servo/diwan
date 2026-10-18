@@ -17,6 +17,9 @@ export const HOOK_SCRIPTS_DIR = '.pixel-agents/hooks';
 
 export const BASH_COMMAND_DISPLAY_MAX_LENGTH = 30;
 export const TASK_DESCRIPTION_DISPLAY_MAX_LENGTH = 40;
+/** Wire cap for the fuller tool text (`detail`): characters and lines. */
+export const TOOL_DETAIL_MAX_CHARS = 400;
+export const TOOL_DETAIL_MAX_LINES = 6;
 
 // ── Transport ────────────────────────────────────────────────
 // Connection-state names for the MessageTransport state machine.

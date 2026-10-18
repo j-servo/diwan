@@ -1,0 +1,188 @@
+{
+  "version": 1,
+  "glb": "figures-egypt.glb",
+  "units": "metres; glTF Y up; figures face +Z",
+  "fps": 30,
+  "figures": {
+    "scholar": {
+      "node": "scholar",
+      "height": 1.628,
+      "scale": 1.0,
+      "triangles": 7308
+    },
+    "apprentice": {
+      "node": "apprentice",
+      "height": 1.384,
+      "scale": 0.85,
+      "triangles": 5536
+    }
+  },
+  "bones": {
+    "count": 36,
+    "hands": ["hand.R", "hand.L"],
+    "threeNames": {
+      "hand.R": "handR",
+      "hand.L": "handL"
+    }
+  },
+  "clips": {
+    "idle": {
+      "duration": 4.0,
+      "loop": true,
+      "seated": false,
+      "prop": null
+    },
+    "walk": {
+      "duration": 0.9,
+      "loop": true,
+      "seated": false,
+      "prop": null
+    },
+    "sit_idle": {
+      "duration": 6.0,
+      "loop": true,
+      "seated": true,
+      "prop": null
+    },
+    "write": {
+      "duration": 4.0,
+      "loop": true,
+      "seated": true,
+      "prop": "prop_reed_pen"
+    },
+    "read": {
+      "duration": 5.0,
+      "loop": true,
+      "seated": true,
+      "prop": "prop_codex"
+    },
+    "astrolabe": {
+      "duration": 6.0,
+      "loop": true,
+      "seated": true,
+      "prop": "prop_astrolabe"
+    },
+    "scroll_search": {
+      "duration": 5.0,
+      "loop": true,
+      "seated": true,
+      "prop": "prop_scroll"
+    },
+    "receive_letter": {
+      "duration": 5.0,
+      "loop": true,
+      "seated": true,
+      "prop": "prop_letter"
+    },
+    "gesture_beckon": {
+      "duration": 3.0,
+      "loop": true,
+      "seated": true,
+      "prop": null
+    },
+    "look_up": {
+      "duration": 4.0,
+      "loop": true,
+      "seated": true,
+      "prop": null
+    },
+    "stand_up": {
+      "duration": 1.6,
+      "loop": false,
+      "seated": true,
+      "prop": null,
+      "transition": true
+    },
+    "sit_down": {
+      "duration": 1.8,
+      "loop": false,
+      "seated": true,
+      "prop": null,
+      "transition": true
+    }
+  },
+  "walk": {
+    "speedMps": 0.8,
+    "cycleSeconds": 0.9,
+    "strideMeters": 0.72,
+    "dutyFactor": 0.6,
+    "note": "stance feet move back at speedMps; move the root forward at the same speed"
+  },
+  "seated": {
+    "hipHeight": 0.252,
+    "hipsBone": "hips",
+    "cushionHeight": 0.15,
+    "cushionHalfSize": 0.34,
+    "deskHeight": 0.45,
+    "deskNearEdge": 0.3,
+    "note": "root at the cushion centre on the floor; the desk near edge is deskNearEdge metres in front (+Z), top at deskHeight"
+  },
+  "materials": {
+    "trim": "runtime tints the collar per agent; never amethyst",
+    "doubleSided": [
+      "kilt",
+      "shirt",
+      "dress",
+      "sash",
+      "belt",
+      "wig_long",
+      "trim",
+      "gold",
+      "bead",
+      "sandal",
+      "ink",
+      "papyrus"
+    ]
+  },
+  "props": {
+    "prop_reed_pen": {
+      "hand": "hand.R",
+      "clip": "write",
+      "hiddenByDefault": true,
+      "parts": []
+    },
+    "prop_codex": {
+      "hand": "hand.L",
+      "clip": "read",
+      "hiddenByDefault": true,
+      "parts": ["prop_codex_page"]
+    },
+    "prop_astrolabe": {
+      "hand": "hand.L",
+      "clip": "astrolabe",
+      "hiddenByDefault": true,
+      "parts": ["prop_astrolabe_rete"]
+    },
+    "prop_scroll": {
+      "hand": "hand.L",
+      "clip": "scroll_search",
+      "hiddenByDefault": true,
+      "parts": []
+    },
+    "prop_letter": {
+      "hand": "hand.R",
+      "clip": "receive_letter",
+      "hiddenByDefault": true,
+      "parts": []
+    }
+  },
+  "candle": {
+    "node": "candle",
+    "wax": "candle_wax",
+    "flame": "candle_flame",
+    "waxBaseY": 0.024,
+    "waxHeight": 0.11,
+    "note": "a clay oil lamp with a rush wick: scale candle_wax.y by the remaining fraction; set candle_flame.position.y = waxBaseY + waxHeight * scale; hide both when the gauge is null"
+  },
+  "costume": {
+    "hideable": ["kilt", "belt", "dress", "shirt", "sash", "wig", "wig_long"],
+    "note": "every variant is in the mesh; the runtime shows a persona's garments by material.visible (kilt|dress, shirt, sash, wig|wig_long, belt) and recolours skin and trim"
+  },
+  "runtimeNotes": [
+    "Clips target the scholar skeleton. three GLTFLoader de-duplicates node names, so the apprentice's bones and props load as <name>_1: strip /_\\d+$/ from names in the apprentice clone before binding the clips.",
+    "three also sanitises '.' out of node names: hand.R loads as handR.",
+    "Props carry extras.hidden = true (userData.hidden in three); hide them on load and show the one clipFor names.",
+    "walk is in place: move the root at walk.speedMps x timeScale, or set timeScale = rootSpeed / walk.speedMps to keep the feet planted.",
+    "sit_down (standing idle pose -> sit_idle pose) and stand_up (the reverse) play at the seat: the root stays at the cushion centre; cross-fade 0.25 s into the next clip."
+  ]
+}

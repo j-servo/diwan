@@ -40,12 +40,14 @@ import {
   FILE_WATCHER_POLL_INTERVAL_MS,
   GLOBAL_SCAN_ACTIVE_MAX_AGE_MS,
   GLOBAL_SCAN_ACTIVE_MIN_SIZE,
+  LINE_BUFFER_MAX_CHARS,
   PROJECT_SCAN_INTERVAL_MS,
 } from './constants.js';
 import { seedContextUsage } from './contextUsage.js';
 import type { DismissalTracker } from './dismissalTracker.js';
 import { assignPaletteIfNeeded } from './paletteAssigner.js';
 import { pathsMatch } from './pathKey.js';
+import { seedSessionLabel } from './sessionLabel.js';
 import type { SubagentWatch } from './subagentWatch.js';
 import { cancelPermissionTimer, cancelWaitingTimer, clearAgentActivity } from './timerManager.js';
 import { getHookProvider, processTranscriptLine } from './transcriptParser.js';
@@ -113,6 +115,7 @@ export function startFileWatching(
   // give an agent adopted or restored mid-session a context gauge without
   // replaying its whole transcript.
   seedContextUsage(agentId, agents, getHookProvider());
+  seedSessionLabel(agentId, agents);
 
   // Single polling approach: reliable on all platforms (macOS, Linux, WSL2, Windows).
   // Previously used triple-redundant fs.watch + fs.watchFile + setInterval, but
@@ -218,13 +221,37 @@ export function readNewLines(
     const bytesToRead = Math.min(stat.size - agent.fileOffset, MAX_READ_BYTES);
     const buf = Buffer.alloc(bytesToRead);
     const fd = fs.openSync(agent.jsonlFile, 'r');
-    fs.readSync(fd, buf, 0, buf.length, agent.fileOffset);
-    fs.closeSync(fd);
+    try {
+      fs.readSync(fd, buf, 0, buf.length, agent.fileOffset);
+    } finally {
+      fs.closeSync(fd);
+    }
     agent.fileOffset += bytesToRead;
 
-    const text = agent.lineBuffer + buf.toString('utf-8');
+    let text = buf.toString('utf-8');
+    if (agent.lineBufferOverflowed) {
+      // Resyncing after an over-long line: skip everything up to the next newline.
+      const nl = text.indexOf('\n');
+      if (nl === -1) text = '';
+      else {
+        text = text.slice(nl + 1);
+        agent.lineBufferOverflowed = false;
+      }
+    }
+    text = agent.lineBuffer + text;
     const lines = text.split('\n');
     agent.lineBuffer = lines.pop() || '';
+    if (agent.lineBuffer.length > LINE_BUFFER_MAX_CHARS) {
+      // One record without a newline past the cap: drop the partial line, resync at the next '\n'.
+      agent.lineBuffer = '';
+      agent.lineBufferOverflowed = true;
+      if (!agent.lineBufferWarned) {
+        agent.lineBufferWarned = true;
+        console.warn(
+          `[Pixel Agents] Agent ${agentId}: transcript line over ${LINE_BUFFER_MAX_CHARS} chars, dropping it`,
+        );
+      }
+    }
 
     const hasLines = lines.some((l) => l.trim());
     if (hasLines) {
@@ -1051,6 +1078,33 @@ export function scanAllTeammateFiles(
 
 // ── External session support (VS Code extension panel, etc.) ──
 
+/** realpath of a path that may not exist yet: the deepest existing ancestor, resolved, plus the rest. */
+function realpathLoose(p: string): string {
+  const rest: string[] = [];
+  let cur = path.resolve(p);
+  for (;;) {
+    try {
+      return path.join(fs.realpathSync(cur), ...rest.reverse());
+    } catch {
+      const parent = path.dirname(cur);
+      if (parent === cur) return path.resolve(p);
+      rest.push(path.basename(cur));
+      cur = parent;
+    }
+  }
+}
+
+/** True when `p`, after symlink resolution, lies under one of the hook provider's session roots. */
+function isUnderSessionRoots(p: string): boolean {
+  const roots = hookProvider?.getAllSessionRoots?.() ?? [];
+  if (roots.length === 0) return false;
+  const real = realpathLoose(p);
+  return roots.some((root) => {
+    const rel = path.relative(realpathLoose(root), real);
+    return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+  });
+}
+
 /**
  * Adopt an external session detected via hooks (SessionStart for unknown session_id).
  * Thinner wrapper than filesystem-based adoptExternalSession: hooks provide
@@ -1076,6 +1130,11 @@ export function adoptExternalSessionFromHook(
     // Guard: don't adopt if file is already tracked by an agent
     for (const agent of agents.values()) {
       if (pathsMatch(agent.jsonlFile, transcriptPath)) return;
+    }
+    // The path comes from a hook payload: only follow one inside the provider's session roots.
+    if (!isUnderSessionRoots(transcriptPath)) {
+      if (debug) console.log('[Pixel Agents] Hook: ignoring transcript_path outside session roots');
+      return;
     }
     // Don't check knownJsonlFiles here -- hooks confirmed this is a real session,
     // and seeded files at startup are in knownJsonlFiles but may become active later.

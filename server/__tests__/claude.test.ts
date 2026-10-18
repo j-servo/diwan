@@ -257,5 +257,15 @@ describe('claudeProvider', () => {
     it('handles undefined input', () => {
       expect(claudeProvider.formatToolStatus('Read', undefined)).toBe('Reading ');
     });
+    it('redacts a secret in a Subtask description', () => {
+      expect(
+        claudeProvider.formatToolStatus('Task', { description: 'use TOKEN=abc123 here' }),
+      ).not.toContain('abc123');
+    });
+    it('redacts a secret in a Bash command before cutting it for the bubble', () => {
+      const status = claudeProvider.formatToolStatus('Bash', { command: 'export TOKEN=abc123' });
+      expect(status).not.toContain('abc');
+      expect(status).toBe('Running: export TOKEN=•••');
+    });
   });
 });

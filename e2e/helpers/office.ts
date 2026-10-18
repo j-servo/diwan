@@ -253,13 +253,17 @@ export async function expectTeammateSeatedNextToLead(
   });
 }
 
+interface SelectHooks {
+  selectAgent?: (id: number) => void;
+}
+
 /** Select a character (agent or sub-agent) through the deterministic test hook
  *  — the same officeState.selectedAgentId a canvas click sets. Sub-agents use
  *  negative ids (first sub is -1). Selection is what reveals a sub-agent's
  *  live activity text in its overlay (hover shows only the subtask title). */
 export async function selectCharacter(frame: OverlaySurface, agentId: number): Promise<void> {
   await frame.evaluate((id) => {
-    window.__pixelAgentsTestHooks?.selectAgent?.(id);
+    (window as { __pixelAgentsTestHooks?: SelectHooks }).__pixelAgentsTestHooks?.selectAgent?.(id);
   }, agentId);
 }
 
@@ -285,7 +289,7 @@ export async function closeAgentFromOverlay(
   // data-agent-id, so the text-based lookup path resolves an id too.
   const agentId = options.agentId ?? Number(await overlay.getAttribute('data-agent-id'));
   await frame.evaluate((id) => {
-    window.__pixelAgentsTestHooks?.selectAgent?.(id);
+    (window as { __pixelAgentsTestHooks?: SelectHooks }).__pixelAgentsTestHooks?.selectAgent?.(id);
   }, agentId);
 
   const closeButton = overlay.locator('button[title="Close agent"]');

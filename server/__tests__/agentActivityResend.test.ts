@@ -80,6 +80,22 @@ describe('resendAgentActivity', () => {
     });
   });
 
+  it('re-sends the fuller tool detail with the status', () => {
+    const store = new AgentStateStore();
+    store.set(
+      1,
+      createTestAgent({
+        id: 1,
+        activeToolStatuses: new Map([['tool-1', 'Running: npm run deploy:sta\u2026']]),
+        activeToolNames: new Map([['tool-1', 'Bash']]),
+        activeToolDetails: new Map([['tool-1', 'npm run deploy:staging --region eu']]),
+      }),
+    );
+    const sent: Array<Record<string, unknown>> = [];
+    resendAgentActivity((msg) => sent.push(msg), store);
+    expect(sent[0].detail).toBe('npm run deploy:staging --region eu');
+  });
+
   it('handles background tools with flags and promoted skip logic', () => {
     const store = new AgentStateStore();
     // Lead with three background tools: unnamed, named spawn, and promoted

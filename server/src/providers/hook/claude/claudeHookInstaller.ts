@@ -3,16 +3,13 @@ import * as os from 'os';
 import * as path from 'path';
 import { isDeepStrictEqual } from 'util';
 
-import { HOOK_SCRIPTS_DIR } from '../../../constants.js';
+import { getBrand } from '../../../brand.js';
 import {
   CLAUDE_HOOK_EVENTS,
   CLAUDE_HOOK_SCRIPT_NAME,
-  LEGACY_HOOK_SCRIPT_NAME,
-  SETTINGS_BACKUP_SUFFIX,
   SETTINGS_FRESH_FILE_MODE,
   SETTINGS_MUTATE_ATTEMPTS,
   SETTINGS_MUTATE_RETRY_DELAY_MS,
-  SETTINGS_TMP_SUFFIX,
 } from './constants.js';
 
 /** A single hook entry in Claude Code's ~/.claude/settings.json hooks config. */
@@ -38,7 +35,7 @@ function getClaudeSettingsPath(): string {
 
 /** Returns the destination path for the hook script (~/.pixel-agents/hooks/claude-hook.js). */
 function getHookScriptPath(): string {
-  return path.join(os.homedir(), HOOK_SCRIPTS_DIR, CLAUDE_HOOK_SCRIPT_NAME);
+  return path.join(os.homedir(), getBrand().dirName, 'hooks', CLAUDE_HOOK_SCRIPT_NAME);
 }
 
 /** Surfaced to the user when settings.json exists but cannot be parsed. The
@@ -179,7 +176,7 @@ async function mutateClaudeSettings(
  *  preserves nothing and masquerades as the user's original. */
 function backupClaudeSettingsOnce(settingsPath: string): void {
   if (!fs.existsSync(settingsPath)) return;
-  const backupPath = settingsPath + SETTINGS_BACKUP_SUFFIX;
+  const backupPath = settingsPath + getBrand().settingsBackupSuffix;
   try {
     fs.copyFileSync(settingsPath, backupPath, fs.constants.COPYFILE_EXCL);
     console.log(`[Pixel Agents] Backed up Claude settings to ${backupPath}`);
@@ -225,7 +222,7 @@ export function settingsUnusableBackupMessage(backupPath: string): string {
 function writeClaudeSettings(settings: ClaudeSettings, expectedRaw: string | null): void {
   const settingsPath = getClaudeSettingsPath();
   const dir = path.dirname(settingsPath);
-  const tmpPath = settingsPath + SETTINGS_TMP_SUFFIX;
+  const tmpPath = settingsPath + getBrand().settingsTmpSuffix;
 
   // A tmp file left by a crashed earlier run would make the rename below write
   // stale content on a platform where rename is not the commit we assume.
@@ -290,12 +287,10 @@ function removeIfPresent(filePath: string): void {
 }
 
 /** Legacy script name (before rename to claude-hook.js), as a path suffix. */
-const LEGACY_HOOK_PATH_SUFFIX = `/${LEGACY_HOOK_SCRIPT_NAME}`;
 
 /** The path suffix we own: `/.pixel-agents/hooks/claude-hook.js`. The leading
  *  separator is load-bearing — without it `/opt/evil.pixel-agents/hooks/...`
  *  and `my-pixel-agents-hook.js` match by substring. */
-const HOOK_PATH_SUFFIX = `/${HOOK_SCRIPTS_DIR}/${CLAUDE_HOOK_SCRIPT_NAME}`;
 
 /** Characters that end a path token in a shell command line. A path we own is
  *  either the whole token or ends at one of these; anything else after it
@@ -359,7 +354,10 @@ function isOurHookCommand(command: string): boolean {
   // Both suffix constants are lower-case, so folding the token is the whole
   // normalization.
   const normalized = token.toLowerCase();
-  return normalized.endsWith(HOOK_PATH_SUFFIX) || normalized.endsWith(LEGACY_HOOK_PATH_SUFFIX);
+  const brand = getBrand();
+  const ours = `/${brand.dirName}/hooks/${CLAUDE_HOOK_SCRIPT_NAME}`.toLowerCase();
+  const legacy = brand.legacyHookScriptName ? `/${brand.legacyHookScriptName}`.toLowerCase() : null;
+  return normalized.endsWith(ours) || (legacy !== null && normalized.endsWith(legacy));
 }
 
 /**
@@ -547,6 +545,29 @@ function makeHookEntry(): ClaudeHookEntry {
 }
 
 /**
+ * Which events hold one of our hook commands, for `diwan hooks status`. Same read
+ * rules as areHooksInstalled (an unreadable or malformed file reports none), plus
+ * where the script lives and whether it is on disk.
+ */
+export function hooksStatus(): { events: string[]; scriptPath: string; scriptPresent: boolean } {
+  const scriptPath = getHookScriptPath();
+  const scriptPresent = isRegularFile(scriptPath);
+  let hooks: unknown;
+  try {
+    hooks = readClaudeSettings().hooks;
+  } catch {
+    return { events: [], scriptPath, scriptPresent };
+  }
+  if (!hooks || typeof hooks !== 'object' || Array.isArray(hooks)) {
+    return { events: [], scriptPath, scriptPresent };
+  }
+  const events = Object.entries(hooks as Record<string, unknown>)
+    .filter(([, entries]) => Array.isArray(entries) && entries.some(entryHasOurHook))
+    .map(([event]) => event);
+  return { events, scriptPath, scriptPresent };
+}
+
+/**
  * Whether ANY Pixel Agents hook command is present in ~/.claude/settings.json.
  *
  * "Any", not "all 12", and the difference is the whole point. Every caller asks
@@ -726,7 +747,7 @@ export async function uninstallHooks(): Promise<void> {
  *  copy failed, so callers can report the failure instead of logging a false
  *  success (issue #333: a path regression silently installed nothing). */
 export function copyHookScript(extensionPath: string): boolean {
-  const src = path.join(extensionPath, 'dist', 'hooks', CLAUDE_HOOK_SCRIPT_NAME);
+  const src = path.join(extensionPath, 'dist', getBrand().hookBundleDir, CLAUDE_HOOK_SCRIPT_NAME);
   const dst = getHookScriptPath();
   const dstDir = path.dirname(dst);
 

@@ -128,7 +128,7 @@ test.describe('Pets', () => {
     narrator.step('clicking Claudio — placing the pet');
     await claudio.click();
     await frame.waitForFunction(() => {
-      const pets = (window as PetWindow).__pixelAgentsTestHooks?.getPets?.() ?? [];
+      const pets = (globalThis.window as PetWindow).__pixelAgentsTestHooks?.getPets?.() ?? [];
       return pets.length === 1 && pets[0]?.petType === 0;
     });
     narrator.check('one pet on the canvas (getPets → 1, petType claudio)');
@@ -137,7 +137,8 @@ test.describe('Pets', () => {
     narrator.step('clicking Claudio again — removing the pet');
     await claudio.click();
     await frame.waitForFunction(
-      () => ((window as PetWindow).__pixelAgentsTestHooks?.getPets?.() ?? []).length === 0,
+      () =>
+        ((globalThis.window as PetWindow).__pixelAgentsTestHooks?.getPets?.() ?? []).length === 0,
     );
     narrator.check('canvas empty again (getPets → 0)');
 
@@ -151,7 +152,8 @@ test.describe('Pets', () => {
     );
     await gitcat.click();
     await frame.waitForFunction(
-      () => ((window as PetWindow).__pixelAgentsTestHooks?.getPets?.() ?? []).length === 2,
+      () =>
+        ((globalThis.window as PetWindow).__pixelAgentsTestHooks?.getPets?.() ?? []).length === 2,
     );
     narrator.check('two pets on the canvas (getPets → 2)');
 
@@ -192,7 +194,8 @@ test.describe('Pets', () => {
     await reopenBottomPanel(window);
     const freshFrame = await getPixelAgentsFrame(window);
     await freshFrame.waitForFunction(
-      () => ((window as PetWindow).__pixelAgentsTestHooks?.getPets?.() ?? []).length === 2,
+      () =>
+        ((globalThis.window as PetWindow).__pixelAgentsTestHooks?.getPets?.() ?? []).length === 2,
       undefined,
       { timeout: 15_000 },
     );

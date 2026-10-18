@@ -1166,7 +1166,7 @@ test.describe('Hooks ON / lifecycle', () => {
       .poll(
         async () =>
           frame.evaluate(() => {
-            const w = window as Window & {
+            const w = globalThis.window as Window & {
               __pixelAgentsTestHooks?: { addAgentLog?: unknown[] };
             };
             return w.__pixelAgentsTestHooks?.addAgentLog?.length ?? 0;
@@ -1176,7 +1176,7 @@ test.describe('Hooks ON / lifecycle', () => {
       .toBeGreaterThan(0);
 
     const log = await frame.evaluate(() => {
-      const w = window as Window & {
+      const w = globalThis.window as Window & {
         __pixelAgentsTestHooks?: {
           addAgentLog?: Array<{
             id: number;

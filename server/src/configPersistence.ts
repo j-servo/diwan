@@ -2,7 +2,8 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { CONFIG_FILE_NAME, LAYOUT_FILE_DIR } from './constants.js';
+import { getBrand } from './brand.js';
+import { CONFIG_FILE_NAME } from './constants.js';
 
 export interface AdapterSettings {
   soundEnabled: boolean;
@@ -53,6 +54,9 @@ export interface PixelAgentsConfig {
   /** Per-provider hooks preference, machine-global for the same reason as the
    *  consent above. A provider absent from the map takes the default (true). */
   hooksEnabled: Record<string, boolean>;
+  /** Diwan steer mode: real paths of folders a launch may run in (`diwan projects add`). Kept
+   *  here so a rewrite of this file by any other writer does not drop the registry. */
+  projects?: string[];
 }
 
 const DEFAULT_ADAPTER_SETTINGS: AdapterSettings = {
@@ -67,7 +71,7 @@ const DEFAULT_ADAPTER_SETTINGS: AdapterSettings = {
 };
 
 function getConfigFilePath(): string {
-  return path.join(os.homedir(), LAYOUT_FILE_DIR, CONFIG_FILE_NAME);
+  return path.join(os.homedir(), getBrand().dirName, CONFIG_FILE_NAME);
 }
 
 /** Coerce a loose object into the per-provider consent map, dropping entries whose value is not exactly 'granted' or
@@ -170,6 +174,9 @@ export function readConfig(): PixelAgentsConfig {
         : [],
       hooksConsent: parseHooksConsent(parsed.hooksConsent),
       hooksEnabled: parseHooksEnabled(parsed.hooksEnabled),
+      ...(Array.isArray(parsed.projects)
+        ? { projects: parsed.projects.filter((p): p is string => typeof p === 'string') }
+        : {}),
     };
   } catch (err) {
     console.error('[Pixel Agents] Failed to read config file:', err);
@@ -291,7 +298,9 @@ export function writeConfig(config: PixelAgentsConfig): void {
     }
     const json = JSON.stringify(config, null, 2);
     const tmpPath = filePath + '.tmp';
-    fs.writeFileSync(tmpPath, json, 'utf-8');
+    // The config can hold the project registry: owner-only, like the registry's own writer.
+    fs.writeFileSync(tmpPath, json, { encoding: 'utf-8', mode: 0o600 });
+    fs.chmodSync(tmpPath, 0o600);
     fs.renameSync(tmpPath, filePath);
   } catch (err) {
     console.error('[Pixel Agents] Failed to write config file:', err);

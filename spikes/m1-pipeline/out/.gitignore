@@ -1,0 +1,8 @@
+raw/
+*.blend
+*.blend1
+# multi-MB or regenerable outputs: sizes are in the findings doc
+tex/
+corner.ktx2.glb
+lightmap_golden.png
+lightmap_golden.uastc.ktx2

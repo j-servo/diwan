@@ -4,6 +4,7 @@ import type { HookProvider } from '../../core/src/provider.js';
 import type { AgentStateStore } from './agentStateStore.js';
 import { TEXT_IDLE_DELAY_MS, TOOL_DONE_DELAY_MS } from './constants.js';
 import { updateContextUsage } from './contextUsage.js';
+import { updateSessionLabel } from './sessionLabel.js';
 import { hasInlineTeammates, hasPromotedBackgroundAgent } from './teamUtils.js';
 import {
   cancelPermissionTimer,
@@ -90,6 +91,15 @@ export function formatToolStatus(toolName: string, input: Record<string, unknown
   return hookProvider?.formatToolStatus(toolName, input) ?? `Using ${toolName}`;
 }
 
+/** The fuller action text for a tool call (undefined when the provider has none). */
+function toolDetail(
+  toolName: string,
+  input: Record<string, unknown>,
+  cwd: string | undefined,
+): string | undefined {
+  return hookProvider?.formatToolDetail?.(toolName, input, cwd);
+}
+
 export function processTranscriptLine(
   agentId: number,
   line: string,
@@ -103,6 +113,7 @@ export function processTranscriptLine(
   agent.linesProcessed++;
   try {
     const record = JSON.parse(line);
+    if (typeof record.cwd === 'string' && record.cwd) agent.cwd = record.cwd;
 
     // -- Agent Teams: extract team metadata via the active provider --
     // The provider reads its CLI's own field names (Claude: record.teamName + record.agentName).
@@ -135,6 +146,9 @@ export function processTranscriptLine(
     // -- Context window usage (drives every agent's context gauge) --
     updateContextUsage(agentId, agent, agents, record, hookProvider);
 
+    // -- Session label (the short name the hall and the terminal call this session) --
+    updateSessionLabel(agentId, agent, agents, record);
+
     // Resilient content extraction: support both record.message.content and record.content
     // Claude Code may change the JSONL structure across versions
     const assistantContent = record.message?.content ?? record.content;
@@ -163,6 +177,8 @@ export function processTranscriptLine(
             );
             agent.activeToolIds.add(block.id);
             agent.activeToolStatuses.set(block.id, status);
+            const detail = toolDetail(toolName, block.input || {}, agent.cwd);
+            if (detail) (agent.activeToolDetails ??= new Map()).set(block.id, detail);
             agent.activeToolNames.set(block.id, toolName);
             if (!exemptTools().has(toolName)) {
               hasNonExemptTool = true;
@@ -222,6 +238,7 @@ export function processTranscriptLine(
                 id: agentId,
                 toolId: block.id,
                 status,
+                detail,
                 toolName,
                 permissionActive: agent.permissionSent,
                 runInBackground,
@@ -344,6 +361,7 @@ export function processTranscriptLine(
                     id: agentId,
                     toolId: completedToolId,
                     status: spawnStatus,
+                    detail: agent.activeToolDetails?.get(completedToolId),
                     toolName: completedToolName,
                     runInBackground: true,
                     isTeammateSpawn: agent.teammateSpawnToolIds?.has(completedToolId) || undefined,
@@ -372,6 +390,7 @@ export function processTranscriptLine(
               }
               agent.activeToolIds.delete(completedToolId);
               agent.activeToolStatuses.delete(completedToolId);
+              agent.activeToolDetails?.delete(completedToolId);
               agent.activeToolNames.delete(completedToolId);
               // Send agentToolDone when hooks are off, or for Task/Agent tools
               // (which always use JSONL path for consistent sub-agent lifecycle).
@@ -428,6 +447,7 @@ export function processTranscriptLine(
             });
             agent.activeToolIds.delete(completedToolId);
             agent.activeToolStatuses.delete(completedToolId);
+            agent.activeToolDetails?.delete(completedToolId);
             agent.activeToolNames.delete(completedToolId);
             // Remove the spawn's teammate character or stop its shadow watch.
             backgroundAgentCompletedCallback?.(agentId, completedToolId);
@@ -458,6 +478,7 @@ export function processTranscriptLine(
           if (agent.backgroundAgentToolIds.has(toolId)) continue;
           agent.activeToolIds.delete(toolId);
           agent.activeToolStatuses.delete(toolId);
+          agent.activeToolDetails?.delete(toolId);
           const toolName = agent.activeToolNames.get(toolId);
           agent.activeToolNames.delete(toolId);
           if (isSubagentTool(toolName)) {
@@ -485,6 +506,7 @@ export function processTranscriptLine(
               id: agentId,
               toolId,
               status,
+              detail: agent.activeToolDetails?.get(toolId),
               toolName: agent.activeToolNames.get(toolId),
               runInBackground: true,
               isTeammateSpawn: agent.teammateSpawnToolIds?.has(toolId) || undefined,
@@ -494,6 +516,7 @@ export function processTranscriptLine(
       } else if (agent.activeToolIds.size > 0 && agent.backgroundAgentToolIds.size === 0) {
         agent.activeToolIds.clear();
         agent.activeToolStatuses.clear();
+        agent.activeToolDetails?.clear();
         agent.activeToolNames.clear();
         agent.activeSubagentToolIds.clear();
         agent.activeSubagentToolNames.clear();
@@ -610,6 +633,7 @@ function processProgressRecord(
           parentToolId,
           toolId: block.id,
           status,
+          detail: toolDetail(toolName, block.input || {}, agent.cwd),
         });
       }
     }

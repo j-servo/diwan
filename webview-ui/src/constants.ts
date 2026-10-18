@@ -169,21 +169,29 @@ export const VISUAL_COLOR_PICKER_SWATCH_PX = 22;
 /** Gap (px) between the collapsed trigger and the expanded popup panel. */
 export const VISUAL_COLOR_PICKER_POPUP_GAP_PX = 6;
 
-// ── Notification Sound (done: ascending chime) ─────────────
-export const NOTIFICATION_NOTE_1_HZ = 659.25; // E5
-export const NOTIFICATION_NOTE_2_HZ = 1318.51; // E6 (octave up)
+// ── Notification Sound (done: one soft low bell) ───────────
+export const NOTIFICATION_NOTE_1_HZ = 392.0; // G4
+export const NOTIFICATION_NOTE_2_HZ = 0; // single strike
 export const NOTIFICATION_NOTE_1_START_SEC = 0;
-export const NOTIFICATION_NOTE_2_START_SEC = 0.1;
-export const NOTIFICATION_NOTE_DURATION_SEC = 0.18;
-export const NOTIFICATION_VOLUME = 0.14;
+export const NOTIFICATION_NOTE_2_START_SEC = 0;
+export const NOTIFICATION_NOTE_DURATION_SEC = 0.9;
+export const NOTIFICATION_VOLUME = 0.045;
+/** At most one "done" bell this often: many sessions finishing together ring once. */
+export const NOTIFICATION_MIN_GAP_MS = 4000;
 
-// ── Permission Sound (attention: descending double tap) ────
-export const PERMISSION_NOTE_1_HZ = 880; // A5
-export const PERMISSION_NOTE_2_HZ = 659.25; // E5 (down a fourth)
+// ── Permission Sound (attention: two soft descending bells) ─
+export const PERMISSION_NOTE_1_HZ = 587.33; // D5
+export const PERMISSION_NOTE_2_HZ = 440; // A4
 export const PERMISSION_NOTE_1_START_SEC = 0;
-export const PERMISSION_NOTE_2_START_SEC = 0.12;
-export const PERMISSION_NOTE_DURATION_SEC = 0.15;
-export const PERMISSION_VOLUME = 0.12;
+export const PERMISSION_NOTE_2_START_SEC = 0.16;
+export const PERMISSION_NOTE_DURATION_SEC = 0.6;
+export const PERMISSION_VOLUME = 0.06;
+export const PERMISSION_MIN_GAP_MS = 2000;
+
+/** Bell timbre: a quiet octave partial, a soft attack and a low-pass to take the edge off. */
+export const BELL_OVERTONE_GAIN = 0.22;
+export const BELL_ATTACK_SEC = 0.012;
+export const BELL_LOWPASS_HZ = 2200;
 
 // ── Furniture Animation ─────────────────────────────────────
 export const FURNITURE_ANIM_INTERVAL_SEC = 0.2;
