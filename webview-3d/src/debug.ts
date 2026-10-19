@@ -89,6 +89,8 @@ declare global {
       approvalLamps?: () => LampScreen[];
       /** Screen position of every figure (click and hover targets). */
       figures?: () => FigureScreen[];
+      /** Each figure's rendered world x, z in tiles, keyed by character id. */
+      figurePositions?: () => Record<number, [number, number]>;
     };
   }
 }
@@ -112,6 +114,21 @@ export function trackFigure(): () => void {
   return () => {
     state.figures -= 1;
   };
+}
+
+const figurePos = new Map<number, [number, number]>();
+
+/** A figure's rendered position in tiles (read by the figurePositions probe). */
+export function reportFigurePosition(id: number, x: number, z: number): void {
+  const p = figurePos.get(id);
+  if (p) {
+    p[0] = x;
+    p[1] = z;
+  } else figurePos.set(id, [x, z]);
+}
+
+export function forgetFigurePosition(id: number): void {
+  figurePos.delete(id);
 }
 
 export function reportBoard(texts: string[]): void {
@@ -169,5 +186,6 @@ export function installDebugHook(getOfficeState: () => OfficeState): void {
     window.__diwan.approvalLamp = () => state.scene?.lampScreen() ?? null;
     window.__diwan.approvalLamps = () => state.scene?.lampScreens() ?? [];
     window.__diwan.figures = () => state.scene?.figureScreens() ?? [];
+    window.__diwan.figurePositions = () => Object.fromEntries(figurePos);
   }
 }

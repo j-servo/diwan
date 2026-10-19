@@ -8,6 +8,7 @@ import type { AnimationAction } from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 import { MATRIX_EFFECT_DURATION_SEC } from '../../../webview-ui/src/constants.js';
+import { isWalkable } from '../../../webview-ui/src/office/layout/tileMap.js';
 import type { OfficeState } from '../../../webview-ui/src/office/engine/officeState.js';
 import { useEngineTick } from '../engine/EngineProvider.tsx';
 import { toVisualState } from '../grammar/visualState.js';
@@ -25,12 +26,14 @@ import {
   trimColor,
   walkTimeScale,
 } from './figureLogic.js';
-import { trackFigure } from '../debug.js';
+import { forgetFigurePosition, reportFigurePosition, trackFigure } from '../debug.js';
 import { activeWorld } from '../worlds/registry.js';
 import type { FigureAssets } from './loadFigures.js';
 import { ambientActivityFor } from './idleDirectorStore.js';
 import { patchInkDissolve } from './inkDissolve.js';
 import { headingTowards } from './pathSmoothing.js';
+import { backlog, catchUpBoost, newTrail, pushTile, walkQueue } from './trail.js';
+import type { Trail } from './trail.js';
 import { figureFill, getProbeGrid } from './probeStore.js';
 import { sampleProbe } from './probes.js';
 
@@ -44,6 +47,7 @@ const FADE = 0.25;
 const SIT_DOWN_SEC = 1.8;
 const STAND_UP_SEC = 1.6;
 const ARRIVE = 0.03; // world units
+const DISSOLVE_SEC = 0.25; // each half of a cross-fade when no walkable route exists
 // Desk near edge is 0.3 m ahead of the cushion centre, top at 0.45 m (figures.meta.json seated).
 const CANDLE_AT: [number, number, number] = [-0.5, 0.45, 0.6];
 const WAX_BASE_Y = 0.024;
@@ -152,6 +156,10 @@ interface Runtime {
   accum: number;
   trimKey: number;
   costumeKey: string;
+  /** Engine tiles still to walk, in order. */
+  trail: Trail | null;
+  /** Cross-fade when the engine character jumped with no walkable route: out, snap, in. */
+  fade: { t: number; to: [number, number] } | null;
 }
 
 /**
@@ -192,6 +200,8 @@ export function Figure(props: {
     accum: 0,
     trimKey: -1,
     costumeKey: '',
+    trail: null,
+    fade: null,
   });
   const height = isSubagent ? 1.3 : 1.5;
 
@@ -204,6 +214,7 @@ export function Figure(props: {
   );
 
   useEffect(() => trackFigure(), []);
+  useEffect(() => () => forgetFigurePosition(id), [id]);
 
   const play = (name: Clip | 'sit_down' | 'stand_up', once: boolean) => {
     const r = rt.current;
@@ -241,18 +252,49 @@ export function Figure(props: {
       r.seated = onSeat;
     }
 
-    // Move towards the engine tile at walking pace; frozen while standing up from the cushion.
+    // Walk the tiles the engine character walked, in order (never a straight line to where it is
+    // now, which cuts across the pool); frozen while standing up from the cushion.
+    if (!r.trail) r.trail = newTrail(ch.tileCol, ch.tileRow);
+    const trail = r.trail;
+    if (!r.fade && (ch.tileCol !== trail.col || ch.tileRow !== trail.row)) {
+      const seatTiles = new Set<string>();
+      for (const s of os.seats.values()) seatTiles.add(`${s.seatCol},${s.seatRow}`);
+      const walkable = (c: number, rw: number) =>
+        isWalkable(c, rw, os.tileMap, os.blockedTiles) || seatTiles.has(`${c},${rw}`);
+      if (pushTile(trail, ch.tileCol, ch.tileRow, walkable) === 'dissolve') {
+        r.fade = { t: 0, to: [tx, tz] };
+      }
+    }
     const locked = r.time < r.lockUntil;
     let stepLen = 0;
-    if (!locked) {
-      const [nx, nz] = followStep([r.x, r.z], [tx, tz], dt, FIGURE_MAX_MPS / TILE_METERS);
+    if (r.fade) {
+      // ink-dissolve out, snap to the engine, dissolve back in
+      const f = r.fade;
+      const before = f.t;
+      f.t += dt;
+      if (before < DISSOLVE_SEC && f.t >= DISSOLVE_SEC) {
+        r.x = tx;
+        r.z = tz;
+        trail.queue.length = 0;
+      }
+      if (f.t >= 2 * DISSOLVE_SEC) r.fade = null;
+    } else if (!locked) {
+      let nx: number;
+      let nz: number;
+      if (trail.queue.length) {
+        const behind = backlog([r.x, r.z], trail.queue, [tx, tz]);
+        const speed = (FIGURE_MAX_MPS / TILE_METERS) * catchUpBoost(behind);
+        [nx, nz] = walkQueue([r.x, r.z], trail.queue, dt, speed);
+      } else {
+        [nx, nz] = followStep([r.x, r.z], [tx, tz], dt, FIGURE_MAX_MPS / TILE_METERS);
+      }
       stepLen = Math.hypot(nx - r.x, nz - r.z);
       if (stepLen > 1e-5) r.yaw = headingTowards([r.x, r.z], [nx, nz], r.yaw, dt);
       r.x = nx;
       r.z = nz;
     }
     const dist = Math.hypot(tx - r.x, tz - r.z);
-    const arrived = dist < ARRIVE;
+    const arrived = dist < ARRIVE && !r.fade && trail.queue.length === 0;
     if (arrived && !locked) {
       r.x = tx;
       r.z = tz;
@@ -303,12 +345,17 @@ export function Figure(props: {
     rig.mixer.update(dt);
 
     g.position.set(r.x, 0, r.z);
+    reportFigurePosition(id, r.x, r.z);
     if (inner.current) inner.current.rotation.y = r.yaw;
 
     // Ink dissolve replaces M0's scale effect; the shadow pass cannot discard, so no shadow.
     const p = Math.min(1, ch.matrixEffectTimer / MATRIX_EFFECT_DURATION_SEC);
-    const visible = v.effect === 'spawn' ? p : v.effect === 'despawn' ? 1 - p : 1;
-    const dissolving = v.effect !== null;
+    const fadeVisible = r.fade
+      ? Math.abs(r.fade.t - DISSOLVE_SEC) / DISSOLVE_SEC // 1 -> 0 -> 1
+      : 1;
+    const visible =
+      (v.effect === 'spawn' ? p : v.effect === 'despawn' ? 1 - p : 1) * Math.min(1, fadeVisible);
+    const dissolving = v.effect !== null || r.fade !== null;
     rig.dissolves.forEach((d) => d.setProgress(visible));
     for (const m of rig.meshes) m.castShadow = !dissolving;
     if (blob.current) {
