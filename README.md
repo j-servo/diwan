@@ -4,7 +4,8 @@
 Every Claude Code session on your machine becomes a scholar at work in a living diorama of history's great
 houses of learning.</p>
 
-<p align="center">by <a href="https://jservo.com">J. SERVO</a></p>
+<p align="center">by <a href="https://jservo.com">J. SERVO</a> · forked from the MIT-licensed
+<a href="https://github.com/pixel-agents-hq/pixel-agents">Pixel Agents</a></p>
 
 <p align="center">
   <img src="docs/superpowers/m1/img/frame-1-golden-wide.jpg" alt="The House of Wisdom, Baghdad" width="49%">
@@ -116,8 +117,10 @@ npm run promo -- --cut main --format both   # render the promo video
 
 ## Licence and trademarks
 
-- **Code:** MIT, see [LICENSE](LICENSE).
-- **Trademarks:** the J. SERVO name and mark are trademarks of J. SERVO LLC and are not covered by the MIT
-  licence.
+- **Code:** proprietary, Copyright (c) 2026 J. SERVO LLC, all rights reserved; see [LICENSE](LICENSE).
+- **Forked from an MIT project:** Diwan is a fork of [Pixel Agents](https://github.com/pixel-agents-hq/pixel-agents)
+  (MIT, Copyright (c) 2026 Pablo De Lucca), forked at upstream commit `d1e007a`. The parts that come from it stay
+  under the MIT License, whose full text is kept in [LICENSE](LICENSE).
+- **Trademarks:** the J. SERVO name and mark are trademarks of J. SERVO LLC.
 - **Anthropic:** Claude and Claude Code are trademarks of Anthropic. Diwan is an independent project, not
   affiliated with or endorsed by Anthropic.

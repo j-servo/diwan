@@ -1,7 +1,27 @@
-MIT License
+Copyright (c) 2026 J. SERVO LLC. All rights reserved.
+
+Diwan is built by J. SERVO LLC (https://jservo.com). It is a fork of Pixel
+Agents (https://github.com/pixel-agents-hq/pixel-agents), forked at upstream
+commit d1e007a. Pixel Agents is open source under the MIT License, Copyright
+(c) 2026 Pablo De Lucca.
+
+J. SERVO LLC's work: everything J. SERVO LLC has added to or changed in Diwan
+since the fork, including its code, worlds and documentation, is proprietary
+and confidential. No right to use, copy, modify, distribute or sell any part of
+it is granted without written permission from J. SERVO LLC.
+
+The Pixel Agents code: the portions that come from Pixel Agents stay under the
+MIT License. Its notice is reproduced in full below, as that licence requires,
+and nothing in this file limits the rights it grants.
+
+Third-party fonts, animation clips and traced plates keep their own licences;
+see NOTICE.md and the Credits section of README.md.
+
+-------------------------------------------------------------------------------
+
+Pixel Agents: MIT License
 
 Copyright (c) 2026 Pablo De Lucca
-Copyright (c) 2026 J. SERVO LLC (Diwan modifications and additions)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
